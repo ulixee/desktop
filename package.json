@@ -25,7 +25,7 @@
     "sync": "yarn sync:repos && yarn sync:build",
     "sync:build": "shx rm -rf node_modules/@ulixee && yarn install --refresh-lockfile",
     "sync:repos": "NODE_OPTIONS=\"-r ts-node/register --no-warnings\" node scripts/importMonorepo.ts",
-    "sync:repos:dist": "yarn link --dist",
+    "sync:repos:dist": "yarn sync:repos build-dist",
     "unpack:asar": "npx @electron/asar extract dist/mac-arm64/Ulixee.app/Contents/Resources/app.asar dist/mac-arm64/app_unpacked"
   },
   "dependencies": {
@@ -94,7 +94,7 @@
     "tailwindcss": "^3.4.1",
     "ts-node": "^10.9.2",
     "tslib": "^2.7.0",
-    "typescript": "^5.5.2",
+    "typescript": "^5.6.2",
     "vite": "^5.3.1",
     "vite-plugin-checker": "^0.8.0",
     "vite-plugin-multiple": "^0.2.0",
@@ -105,7 +105,7 @@
     "vue": "^3.4.30",
     "vue-json-pretty": "^2.3.0",
     "vue-router": "^4.4.4",
-    "vue-tsc": "^2.0.22"
+    "vue-tsc": "^2.1.6"
   },
   "workspaces": [
     "packages/*"

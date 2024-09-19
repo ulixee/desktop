@@ -136,7 +136,7 @@ export default defineConfig({
                 'src/ui/extension/state-generator.html',
               ],
             },
-            sourcemap: false,
+            sourcemap: process.env.NODE_ENV === 'production',
             target: 'chrome128',
             modulePreload: false,
             // needed for commonjs to be activated for @ulixee deps

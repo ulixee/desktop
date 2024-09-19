@@ -45,7 +45,7 @@ export default class AccountManager extends TypedEventEmitter<{
   }
 
   public async loadMainchainClient(url?: string, timeoutMillis?: number): Promise<void> {
-    url ??= Env.mainchainUrl;
+    url ??= Env.argonMainchainUrl;
     if (url) {
       try {
         this.mainchainClient = await MainchainClient.connect(url, timeoutMillis ?? 10e3);
