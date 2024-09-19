@@ -1,5 +1,5 @@
 import EventSubscriber from '@ulixee/commons/lib/EventSubscriber';
-import { TypedEventEmitter } from '@ulixee/commons/lib/eventUtils';
+import TypedEventEmitter from '@ulixee/commons/lib/TypedEventEmitter';
 import Logger from '@ulixee/commons/lib/Logger';
 import Queue from '@ulixee/commons/lib/Queue';
 import Env from '@ulixee/datastore/env';

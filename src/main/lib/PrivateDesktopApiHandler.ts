@@ -22,7 +22,7 @@ import IConnectionToClient from '@ulixee/net/interfaces/IConnectionToClient';
 import IArgonFile, { ArgonFileSchema } from '@ulixee/platform-specification/types/IArgonFile';
 import ArgonUtils from '@ulixee/platform-utils/lib/ArgonUtils';
 import Identity from '@ulixee/platform-utils/lib/Identity';
-import { dialog, Menu, WebContents } from 'electron';
+import { app, dialog, Menu, WebContents } from 'electron';
 import { IncomingMessage } from 'http';
 import { nanoid } from 'nanoid';
 import * as Os from 'os';
@@ -32,7 +32,7 @@ import CreditReserver from '@ulixee/datastore/payments/CreditReserver';
 import ApiManager from './ApiManager';
 import ArgonFile from './ArgonFile';
 
-const argIconPath = Path.resolve(__dirname, '..', 'assets', 'arg.png');
+const argIconPath = Path.resolve(app.getAppPath(), 'resources', 'arg.png');
 
 export interface IOpenReplay {
   cloudAddress: string;

@@ -28,7 +28,6 @@ document.addEventListener('desktop:api', (e: any) => {
   ipcRenderer.send('desktop:api', message.api, message.args);
 });
 
-
 // @ts-ignore
 document.addEventListener('chromealive:event', (e: any) => {
   const message = e.detail;
@@ -52,7 +51,6 @@ document.addEventListener('chromealive:api:response', (e: any) => {
   // eslint-disable-next-line no-console
   console.log(original?.command, { args: original?.args?.[0], result: message.data });
 });
-
 
 // @ts-ignore
 document.addEventListener('App:changeHeight', (e: any) => {

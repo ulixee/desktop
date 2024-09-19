@@ -4,13 +4,14 @@
   appId: 'dev.ulixee.desktop',
   productName: 'Ulixee',
   directories: {
-    buildResources: 'build',
+    buildResources: 'build-assets',
   },
   files: [
     'package.json',
     '!packages/**',
-    "!dist",
+    '!dist',
     'out/**',
+    'ui/**',
     'node_modules/**/*',
     'resources/**/*',
     '!.vscode',
@@ -27,6 +28,7 @@
     'node_modules/@argonprotocol/localchain**',
     'node_modules/@ulixee/unblocked-agent-mitm-socket/**',
     'node_modules/**/*.node',
+    'ui/**',
   ],
   mac: {
     category: 'public.app-category.developer-tools',
@@ -41,12 +43,10 @@
     },
     entitlements: 'build/entitlements.mac.plist',
     entitlementsInherit: 'build/entitlements.mac.plist',
-    //    notarize:  {
-    //      tool: 'notarytool',
-    //      appleApiKey: '~/.private_keys/AuthKey_5VH6PQ3585.p8',
-    //      appleApiKeyId: '5VH6PQ3585',
-    //      appleApiIssuer: 'a89474ed-637f-4cf0-8429-da45ef388882',
-    //    },
+    notarize: true,
+//    appleApiKey: '~/.private_keys/AuthKey_5VH6PQ3585.p8',
+//    appleApiKeyId: '5VH6PQ3585',
+//    appleApiIssuer: 'a89474ed-637f-4cf0-8429-da45ef388882'
   },
   win: {
     target: 'NSIS',

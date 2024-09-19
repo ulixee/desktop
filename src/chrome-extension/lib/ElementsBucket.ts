@@ -1,5 +1,9 @@
 import { MessageEventType } from '@ulixee/desktop-interfaces/BridgeHelpers';
-import { sendToCore, sendToDevtoolsPrivate, sendToDevtoolsScript } from './content/ContentMessenger';
+import {
+  sendToCore,
+  sendToDevtoolsPrivate,
+  sendToDevtoolsScript,
+} from './content/ContentMessenger';
 
 interface IResolvable<T = any> {
   resolve: (value?: T | PromiseLike<T>) => void;
@@ -21,7 +25,11 @@ export default class ElementsBucket {
     const callbackFnName = window.onElementFromCore.name;
     const promise = new Promise<HTMLElement>((resolve, reject) => {
       elementPromisesById[backendNodeId] = { resolve, reject };
-      sendToCore({ event: MessageEventType.ContentScriptNeedsElement, backendNodeId, callbackFnName });
+      sendToCore({
+        event: MessageEventType.ContentScriptNeedsElement,
+        backendNodeId,
+        callbackFnName,
+      });
     });
     const element = await promise;
     delete elementPromisesById[backendNodeId];
@@ -78,7 +86,9 @@ export default class ElementsBucket {
   }
 
   public getByKey(backendNodeId: number): HTMLElement {
-    return this.includedElementsById.get(backendNodeId) || this.excludedElementsById.get(backendNodeId);
+    return (
+      this.includedElementsById.get(backendNodeId) || this.excludedElementsById.get(backendNodeId)
+    );
   }
 }
 
@@ -86,9 +96,10 @@ function extractTagText(element: HTMLElement): string {
   const outerHtml = element.outerHTML;
   const len = outerHtml.length;
 
-  const openTagLength = outerHtml[len - 2] === '/' ? // Is self-closing tag?
-    len :
-    len - element.innerHTML.length - (element.tagName.length + 3);
+  const openTagLength =
+    outerHtml[len - 2] === '/' // Is self-closing tag?
+      ? len
+      : len - element.innerHTML.length - (element.tagName.length + 3);
 
   return outerHtml.slice(0, openTagLength);
 }

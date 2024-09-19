@@ -21,7 +21,6 @@ export default class View {
     this.browserView = new BrowserView({
       webPreferences: {
         sandbox: false,
-        contextIsolation: false,
         ...webPreferences,
       },
     });

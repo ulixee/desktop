@@ -1,7 +1,6 @@
 // @ts-ignore
 const { ipcRenderer } = require('electron');
 
-
 // @ts-ignore
 document.addEventListener('chromealive:event', (e: any) => {
   const message = e.detail;

@@ -1,5 +1,5 @@
 module.exports = {
-  content: ['./src/renderer/**/*.{vue,js,ts,jsx,tsx,html}'],
+  content: ['./src/ui/**/*.{vue,js,ts,jsx,tsx,html}'],
   darkMode: 'media', // or 'media' or 'class'
   theme: {
     extend: {
@@ -15,7 +15,5 @@ module.exports = {
   variants: {
     extend: {},
   },
-  plugins: [
-    require('@tailwindcss/forms'), // eslint-disable-line import/no-extraneous-dependencies
-  ],
+  plugins: [require('@tailwindcss/forms')],
 };

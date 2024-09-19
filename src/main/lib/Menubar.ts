@@ -11,7 +11,7 @@ import { WindowManager } from './WindowManager';
 import { version } from '..';
 import loadUrl from './util/loadUrl';
 
-const iconPath = Path.resolve(__dirname, '..', 'assets', 'IconTemplate.png');
+const iconPath = Path.resolve(app.getAppPath(), 'resources', 'IconTemplate.png');
 
 export class Menubar extends EventEmitter {
   #tray?: Tray;
@@ -397,11 +397,7 @@ export class Menubar extends EventEmitter {
       }
     });
 
-    const backgroundPref = process.platform === 'win32' ? 'window' : 'window-background';
-    const windowBackground = systemPreferences.getColor(backgroundPref)?.replace('#', '') ?? '';
-
-    const path = `menubar.html?windowBackground=${windowBackground}`;
-    await loadUrl(this.#menuWindow.webContents, path);
+    await loadUrl(this.#menuWindow.webContents, `menubar.html`);
     if (process.env.OPEN_DEVTOOLS) {
       this.#menuWindow.webContents.openDevTools({ mode: 'detach' });
     }

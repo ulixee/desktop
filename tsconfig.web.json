@@ -1,9 +1,9 @@
 {
   "extends": "@electron-toolkit/tsconfig/tsconfig.web.json",
   "include": [
-    "src/renderer/src/env.d.ts",
-    "src/renderer/src/**/*",
-    "src/renderer/src/**/*.vue",
+    "src/ui/src/env.d.ts",
+    "src/ui/src/**/*",
+    "src/ui/src/**/*.vue",
     "src/preload/*.d.ts",
     "src/chrome-extension/**/*.ts"
   ],
@@ -21,7 +21,7 @@
     "strict": true,
     "paths": {
       "@/*": [
-        "src/renderer/src/*"]
+        "src/ui/src/*"]
     },
     "lib": ["esnext", "dom", "dom.iterable", "scripthost"]
   }

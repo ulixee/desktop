@@ -90,7 +90,6 @@ window[___receiveFromCore] = (
   }
 };
 
-
 // HELPERS //////////////////////////////////////////////////////////////////////////////////////////
 
 function handleIncomingLocalMessage(message: IMessageObject) {

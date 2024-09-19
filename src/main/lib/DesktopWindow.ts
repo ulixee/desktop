@@ -1,11 +1,10 @@
-import { BrowserWindow, WebContents, shell } from 'electron';
+import { app, BrowserWindow, WebContents, shell } from 'electron';
 import * as Path from 'path';
 import EventSubscriber from '@ulixee/commons/lib/EventSubscriber';
 import { TypedEventEmitter } from '@ulixee/commons/lib/eventUtils';
 import ApiManager from './ApiManager';
 import generateContextMenu from '../menus/generateContextMenu';
 import WindowStateKeeper from './util/windowStateKeeper';
-import { rootDir } from '@ulixee/cloud/paths';
 import loadUrl from './util/loadUrl';
 
 export default class DesktopWindow extends TypedEventEmitter<{
@@ -54,9 +53,9 @@ export default class DesktopWindow extends TypedEventEmitter<{
       titleBarStyle: 'hiddenInset',
       ...this.#windowStateKeeper.windowState,
       webPreferences: {
-        preload: `${rootDir}/preload/desktop.js`,
+        preload: `${__dirname}/preload/desktop.js`,
       },
-      icon: Path.resolve('..', 'assets', 'icon.png'),
+      icon: Path.resolve(app.getAppPath(), 'resources', 'icon.png'),
     });
 
     this.#windowStateKeeper.track(this.#window);

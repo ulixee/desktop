@@ -1,11 +1,22 @@
-import { WebContents } from 'electron';
-import { is } from '@electron-toolkit/utils';
+import { WebContents, app } from 'electron';
 import Path from 'path';
 
+export function isDev(): boolean {
+  return !app.isPackaged;
+}
+
 export default async function loadUrl(webContents: WebContents, path: string): Promise<void> {
-  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    await webContents.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/${path}`);
+  if (isDev() && process.env['VITE_DEV_SERVER_URL']) {
+    await webContents.loadURL(`${process.env['VITE_DEV_SERVER_URL']}/ui/${path}`);
   } else {
-    await webContents.loadFile(Path.join(__dirname, `../renderer/${path}`));
+    await webContents.loadFile(Path.join(app.getAppPath(), `ui/${path}`));
+  }
+}
+
+export function getUrl(path: string): string {
+  if (isDev() && process.env['VITE_DEV_SERVER_URL']) {
+    return `${process.env['VITE_DEV_SERVER_URL']}/ui/${path}`;
+  } else {
+    return Path.join(`./ui/${path}`);
   }
 }

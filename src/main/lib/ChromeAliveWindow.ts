@@ -13,14 +13,10 @@ import generateContextMenu from '../menus/generateContextMenu';
 import ApiClient from './ApiClient';
 import View from './View';
 import BrowserView = Electron.BrowserView;
-import { rootDir } from '@ulixee/cloud/paths';
-import loadUrl from './util/loadUrl';
+import loadUrl, { getUrl } from './util/loadUrl';
 
 // make electron packaging friendly
-const extensionPath = Path.resolve(__dirname, '../renderer').replace(
-  'app.asar',
-  'app.asar.unpacked',
-);
+const extensionPath = Path.resolve(__dirname, '../ui').replace('app.asar', 'app.asar.unpacked');
 interface IReplayTab {
   view: View;
   heroTabId: number;
@@ -73,13 +69,8 @@ export default class ChromeAliveWindow {
     this.window = new BrowserWindow({
       show: false,
       acceptFirstMouse: true,
-      webPreferences: {
-        contextIsolation: true,
-        sandbox: true,
-        partition: nanoid(5),
-      },
       titleBarStyle: 'hiddenInset',
-      icon: Path.resolve(app.getAppPath(), 'assets', 'icon.png'),
+      icon: Path.resolve(app.getAppPath(), 'resources', 'icon.png'),
       width: workarea.width,
       height: workarea.height,
       y: workarea.y,
@@ -104,20 +95,21 @@ export default class ChromeAliveWindow {
     });
 
     this.#mainView = new View(this.window, {
-      preload: `${rootDir}/preload/extension.js`,
+      preload: `${__dirname}/preload/chromealive.js`,
     });
     this.#mainView.attach();
     this.#mainView.hide();
     this.#eventSubscriber.on(this.#mainView.browserView.webContents, 'focus', this.closeOpenPopup);
 
     this.#toolbarView = new View(this.window, {
-      preload: `${rootDir}/preload/extension.js`,
+      preload: `${__dirname}/preload/chromealive.js`,
     });
     this.#toolbarView.attach();
     // for child windows
     this.#toolbarView.webContents.setWindowOpenHandler(details => {
       const isMenu = details.frameName.includes('Menu');
       const canMoveAndResize = !isMenu || details.frameName.startsWith('MenuFinder');
+
       return {
         action: 'allow',
         overrideBrowserWindowOptions: {
@@ -130,10 +122,11 @@ export default class ChromeAliveWindow {
           titleBarStyle: 'default',
           alwaysOnTop: details.frameName.startsWith('MenuFinder'),
           hasShadow: !isMenu,
+          details,
           acceptFirstMouse: true,
           useContentSize: true,
           webPreferences: {
-            preload: `${rootDir}/preload/menubar.js`,
+            preload: `${__dirname}/preload/menubar.js`,
           },
         },
       };
@@ -248,49 +241,48 @@ export default class ChromeAliveWindow {
   private async addReplayTab(heroTabId = 1): Promise<void> {
     await this.#addTabQueue.run(async () => {
       if (this.#replayTabs.some(x => x.heroTabId === heroTabId)) return;
-      const view = new View(this.window, {
-        partition: `persist:${nanoid(5)}`,
-        webSecurity: false,
-      });
+      const view = new View(this.window);
       view.browserView.setAutoResize({ width: true, height: true });
       view.attach();
 
+      await view.webContents.session.loadExtension(extensionPath, {
+        allowFileAccess: false,
+      });
       view.webContents.on('focus', () => {
         if (!this.#showingPopupName?.startsWith('MenuFinder')) this.closeOpenPopup();
       });
 
-      await view.webContents.session.loadExtension(extensionPath, {
-        allowFileAccess: true,
-      });
       if (this.enableDevtoolsOnDevtools) await this.addDevtoolsOnDevtools(view);
       this.#eventSubscriber.on(view.webContents, 'devtools-opened', async () => {
+        await view.webContents.executeJavaScript(`window.cloudAddress = '${this.api.address}'`);
+
         const devtoolsWc = view.webContents.devToolsWebContents;
         if (!devtoolsWc) {
           console.warn('No web contents on showing devtools');
           return;
         }
 
-        void devtoolsWc.executeJavaScript(
+        await devtoolsWc.executeJavaScript(
           `(async () => {
-          window.addEventListener("message", (event) => {
-            event.source.postMessage({
-              action: 'returnCloudAddress',
-              cloudAddress: '${this.api.address}'
-            }, event.origin);
-          }, false);
-        const tabbedPane = UI.panels.elements.parentWidgetInternal.parentWidgetInternal;
-        tabbedPane.closeTabs(['timeline', 'heap_profiler', 'lighthouse', 'chrome_recorder', 'security', 'resources', 'network', 'sources']);
+            while (typeof UI === 'undefined') {
+            console.log('waiting')
+              await new Promise(resolve => setTimeout(resolve, 100));
+            }
 
-        for (let i =0; i < 50; i+=1) {
-           const tab = tabbedPane.tabs.find(x => x.titleInternal === 'Hero Script');
-           if (tab) {
-             tabbedPane.insertBefore(tab, 0);
-             tabbedPane.selectTab(tab.id);
-             break;
-           }
-           await new Promise(requestAnimationFrame);
-        }
-      })()`,
+            const tabbedPane = UI.panels.elements.parentWidgetInternal.parentWidgetInternal;
+            tabbedPane.closeTabs(['timeline', 'heap_profiler','heap-profiler', 'lighthouse', 'chrome_recorder', 'chrome-recorder', 'security', 'memory', 'resources', 'network', 'sources']);
+
+            for (let i =0; i < 50; i+=1) {
+               const tab = tabbedPane.tabs.find(x => x.titleInternal === 'Hero Script');
+               if (tab) {
+                 tabbedPane.insertBefore(tab, 0);
+                 tabbedPane.selectTab(tab.id);
+                 break;
+               }
+               await new Promise(resolve => setTimeout(resolve, i * 10));
+               await new Promise(requestAnimationFrame);
+            }
+          })()`,
         );
         const target = await View.getTargetInfo(devtoolsWc);
         await this.api.send('Session.devtoolsTargetOpened', target);

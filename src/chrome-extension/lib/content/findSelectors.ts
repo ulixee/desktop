@@ -188,7 +188,7 @@ function generateAllCombinations(options) {
       combinationFn([...activeSet], restOfArray.slice(1), all);
     }
     return all;
-  };
+  }
   return combinationFn([], [...options], []);
 }
 

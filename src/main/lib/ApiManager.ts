@@ -16,7 +16,7 @@ import { IDesktopAppApis } from '@ulixee/desktop-interfaces/apis';
 import { ICloudConnected } from '@ulixee/desktop-interfaces/apis/IDesktopApis';
 import IDesktopAppEvents from '@ulixee/desktop-interfaces/events/IDesktopAppEvents';
 import ArgonUtils from '@ulixee/platform-utils/lib/ArgonUtils';
-import { screen } from 'electron';
+import { screen, app } from 'electron';
 import * as http from 'http';
 import { AddressInfo } from 'net';
 import * as Path from 'path';
@@ -29,7 +29,7 @@ import DeploymentWatcher from './DeploymentWatcher';
 import PrivateDesktopApiHandler from './PrivateDesktopApiHandler';
 import { version } from '..';
 
-const bundledDatastoreExample = Path.join(__dirname, '../assets/ulixee-docs.dbx.tgz');
+const bundledDatastoreExample = Path.resolve(app.getAppPath(), 'resources', 'ulixee-docs.dbx.tgz');
 
 export default class ApiManager<
   TEventType extends keyof IDesktopAppEvents & string = keyof IDesktopAppEvents,
@@ -258,10 +258,12 @@ export default class ApiManager<
       ]);
       clearInterval(this.reconnectsByAddress[address]);
       const events = [
-        this.events.on(wsToCore, 'message', msg => wsToDevtoolsProtocol.send(msg)),
+        this.events.on(wsToCore, 'message', msg => {
+          wsToDevtoolsProtocol.send(msg.toString());
+        }),
         this.events.on(wsToCore, 'error', this.onDevtoolsError.bind(this, wsToCore)),
         this.events.once(wsToCore, 'close', this.onApiClosed.bind(this, cloud)),
-        this.events.on(wsToDevtoolsProtocol, 'message', msg => wsToCore.send(msg)),
+        this.events.on(wsToDevtoolsProtocol, 'message', msg => wsToCore.send(msg.toString())),
         this.events.on(
           wsToDevtoolsProtocol,
           'error',
