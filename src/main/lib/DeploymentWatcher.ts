@@ -19,7 +19,12 @@ export default class DeploymentWatcher extends TypedEventEmitter<{
   }
 
   public start(): void {
-    if (!Fs.existsSync(deploymentsFile)) Fs.writeFileSync(deploymentsFile, '');
+    if (!Fs.existsSync(deploymentsFile)) {
+      if (!Fs.existsSync(UlixeeConfig.global.directoryPath)) {
+        Fs.mkdirSync(UlixeeConfig.global.directoryPath, { recursive: true });
+      }
+      Fs.writeFileSync(deploymentsFile, '');
+    }
     if (process.platform === 'win32' || process.platform === 'darwin') {
       this.deploymentFileWatch = Fs.watch(deploymentsFile, { persistent: false }, () => {
         void this.checkFile();

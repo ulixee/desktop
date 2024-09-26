@@ -73,9 +73,8 @@ function copyDir(baseDir: string, outPath?: string): void {
       if (!Fs.existsSync(packageDir)) Fs.mkdirSync(packageDir, { recursive: true });
       if (dirOrFile === 'package.json') {
         const finalPackageJson = {
-          name: packageJson.name,
-          version: packageJson.version,
-          dependencies: packageJson.dependencies,
+          ...packageJson,
+          devDependencies: {},
         };
         Fs.writeFileSync(`${packageDir}/${dirOrFile}`, JSON.stringify(finalPackageJson, null, 2));
         continue;
@@ -90,12 +89,14 @@ if (!existsSync(pathToPlatform)) {
 }
 
 const buildDir = process.argv[2] ?? 'build';
+console.log('Importing Platform into Desktop, out=', buildDir);
 if (!existsSync(Path.join(pathToPlatform, buildDir))) {
   throw new Error(`The build directory does not exist: ${buildDir}`);
 }
 const baseBuild = Path.join(pathToPlatform, buildDir);
 copyDir(baseBuild);
-if (buildDir === 'build' && existsSync(Path.join(pathToHero, buildDir))) {
+if (existsSync(Path.join(pathToHero, buildDir))) {
+  console.log('Importing Hero into Desktop, out=', buildDir);
   copyDir(Path.join(pathToHero, buildDir));
   // copyDir(`${baseBuild}/../mainchain/localchain`);
   copyDir(`${pathToHero}/browser-emulator-builder/data`, `${dest}/default-browser-emulator/data`);
@@ -113,5 +114,10 @@ if (buildDir === 'build' && existsSync(Path.join(pathToHero, buildDir))) {
   );
 }
 
+const chromeVersions = resolve(__dirname, '../../chrome-versions');
+if (existsSync(chromeVersions)) {
+  copyDir(Path.join(chromeVersions, 'packages', 'chrome-app'), `${dest}/chrome-app`);
+}
+
 // eslint-disable-next-line no-console
-console.log('Copied files to dest');
+console.log(`Copied files to ${dest}`);

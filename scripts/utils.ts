@@ -1,10 +1,8 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import cp from 'node:child_process';
-import type { AddressInfo } from 'node:net';
 import { builtinModules } from 'node:module';
-import { type InlineConfig, type ViteDevServer, mergeConfig } from 'vite';
-import type { ElectronOptions } from '.';
+import type { AddressInfo } from 'node:net';
+import { type InlineConfig, mergeConfig, type ViteDevServer } from 'vite';
+import { ElectronOptions } from './electron';
 
 export interface PidTree {
   pid: number;
@@ -14,8 +12,6 @@ export interface PidTree {
 
 /** Resolve the default Vite's `InlineConfig` for build Electron-Main */
 export function resolveViteConfig(options: ElectronOptions): InlineConfig {
-  const packageJson = resolvePackageJson() ?? {};
-  const esmodule = packageJson.type === 'module';
   const defaultConfig: InlineConfig = {
     // 🚧 Avoid recursive build caused by load config file
     configFile: false,
@@ -25,8 +21,7 @@ export function resolveViteConfig(options: ElectronOptions): InlineConfig {
       // @ts-ignore
       lib: options.entry && {
         entry: options.entry,
-        // Since Electron(28) supports ESModule
-        formats: esmodule ? ['es'] : ['cjs'],
+        formats: ['cjs'],
         fileName: () => '[name].js',
       },
       outDir: 'out',
@@ -105,22 +100,7 @@ export function resolveServerUrl(server: ViteDevServer): string | void {
     const devBase = server.config.base;
 
     const path = typeof options.open === 'string' ? options.open : devBase;
-    const url = path.startsWith('http') ? path : `${protocol}://${hostname}:${port}${path}`;
-
-    return url;
-  }
-}
-
-export function resolvePackageJson(root = process.cwd()): {
-  type?: 'module' | 'commonjs';
-  [key: string]: any;
-} | null {
-  const packageJsonPath = path.join(root, 'package.json');
-  const packageJsonStr = fs.readFileSync(packageJsonPath, 'utf8');
-  try {
-    return JSON.parse(packageJsonStr);
-  } catch {
-    return null;
+    return path.startsWith('http') ? path : `${protocol}://${hostname}:${port}${path}`;
   }
 }
 

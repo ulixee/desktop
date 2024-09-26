@@ -1,17 +1,18 @@
-import { defineConfig } from 'vite';
-import electron from './scripts/electron';
+import vue from '@vitejs/plugin-vue';
+import { existsSync, rmSync } from 'node:fs';
+import * as path from 'node:path';
 import { resolve } from 'node:path';
+import { defineConfig } from 'vite';
 import prismjs from 'vite-plugin-prismjs';
 import svgLoader from 'vite-svg-loader';
-import vue from '@vitejs/plugin-vue';
-import { rmSync, existsSync } from 'node:fs';
+import electron from './scripts/electron';
 
 if (existsSync(resolve('main'))) rmSync(resolve('main'), { recursive: true });
 
 export default defineConfig({
   publicDir: false,
   build: {
-    outDir: 'main',
+    outDir: resolve('main'),
     rollupOptions: {
       input: resolve('src/empty.ts'),
     },
@@ -29,16 +30,20 @@ export default defineConfig({
                 if (
                   source.startsWith('src') ||
                   source.startsWith('.') ||
-                  source.includes(__dirname)
+                  source.startsWith('/') ||
+                  /^[A-Za-z]:/.test(source) ||
+                  source.includes('desktop\\\\src') ||
+                  source.includes('desktop/src')
                 )
                   return false;
 
                 return true;
               },
               output: {
-                interop: 'auto',
+                interop: 'compat',
               },
             },
+            minify: false,
             commonjsOptions: {
               requireReturnsDefault: 'preferred',
               sourceMap: true,
@@ -55,9 +60,9 @@ export default defineConfig({
           args.reload();
         },
         entry: {
-          chromealive: 'src/preload/ChromeAlivePagePreload.ts',
-          desktop: 'src/preload/DesktopPagePreload.ts',
-          menubar: 'src/preload/MenubarPagePreload.ts',
+          chromealive: resolve('src/preload/ChromeAlivePagePreload.ts'),
+          desktop: resolve('src/preload/DesktopPagePreload.ts'),
+          menubar: resolve('src/preload/MenubarPagePreload.ts'),
         },
         vite: {
           build: {
@@ -79,7 +84,7 @@ export default defineConfig({
           base: './',
           build: {
             lib: {
-              entry: 'content.ts',
+              entry: resolve('src/chrome-extension/content.ts'),
               formats: ['cjs'],
               fileName: () => '[name].js',
             },
@@ -120,20 +125,20 @@ export default defineConfig({
             rollupOptions: {
               input: [
                 resolve('src/ui/desktop.html'),
-                'src/ui/menubar.html',
-                'src/ui/menu-finder.html',
-                'src/ui/menu-primary.html',
-                'src/ui/menu-timetravel.html',
-                'src/ui/menu-url.html',
-                'src/ui/screen-about.html',
-                'src/ui/screen-input.html',
-                'src/ui/screen-output.html',
-                'src/ui/screen-reliability.html',
-                'src/ui/toolbar.html',
-                'src/ui/devtools-entrypoint.html',
-                'src/ui/extension/resources.html',
-                'src/ui/extension/hero-script.html',
-                'src/ui/extension/state-generator.html',
+                resolve('src/ui/menubar.html'),
+                resolve('src/ui/menu-finder.html'),
+                resolve('src/ui/menu-primary.html'),
+                resolve('src/ui/menu-timetravel.html'),
+                resolve('src/ui/menu-url.html'),
+                resolve('src/ui/screen-about.html'),
+                resolve('src/ui/screen-input.html'),
+                resolve('src/ui/screen-output.html'),
+                resolve('src/ui/screen-reliability.html'),
+                resolve('src/ui/toolbar.html'),
+                resolve('src/ui/devtools-entrypoint.html'),
+                resolve('src/ui/extension/resources.html'),
+                resolve('src/ui/extension/hero-script.html'),
+                resolve('src/ui/extension/state-generator.html'),
               ],
             },
             sourcemap: process.env.NODE_ENV === 'production',
