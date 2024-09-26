@@ -393,14 +393,14 @@ export default Vue.defineComponent({
       if (note.noteType.action === 'claimFromMainchain') {
         return `Claim from Mainchain`;
       }
-      if (note.noteType.action === 'escrowClaim') {
-        return `Escrow Claim`;
+      if (note.noteType.action === 'channelHoldClaim') {
+        return `ChannelHold Claim`;
       }
-      if (note.noteType.action === 'escrowSettle') {
-        return `Escrow Settle`;
+      if (note.noteType.action === 'channelHoldSettle') {
+        return `ChannelHold Settle`;
       }
-      if (note.noteType.action === 'escrowHold') {
-        return `Escrow Hold`;
+      if (note.noteType.action === 'channelHold') {
+        return `ChannelHold`;
       }
       if (note.noteType.action === 'sendToMainchain') {
         return `Send to Mainchain`;

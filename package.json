@@ -29,7 +29,7 @@
     "unpack:asar": "npx @electron/asar extract dist/mac-arm64/Ulixee.app/Contents/Resources/app.asar dist/mac-arm64/app_unpacked"
   },
   "dependencies": {
-    "@argonprotocol/localchain": "0.0.4",
+    "@argonprotocol/localchain": "0.0.8",
     "@electron-toolkit/preload": "^3.0.0",
     "@ulixee/cloud": "2.0.0-alpha.29",
     "@ulixee/commons": "2.0.0-alpha.29",

@@ -21,7 +21,7 @@ import ArgonUtils from '@ulixee/platform-utils/lib/ArgonUtils';
 import { gettersToObject } from '@ulixee/platform-utils/lib/objectUtils';
 import serdeJson from '@ulixee/platform-utils/lib/serdeJson';
 import * as Path from 'path';
-import BrokerEscrowSource from '@ulixee/datastore/payments/BrokerEscrowSource';
+import BrokerChannelHoldSource from '@ulixee/datastore/payments/BrokerChannelHoldSource';
 import { IArgonFile } from './ArgonFile';
 
 const { log } = Logger(module);
@@ -70,7 +70,7 @@ export default class AccountManager extends TypedEventEmitter<{
           genesisUtcTime: Env.genesisUtcTime,
           tickDurationMillis: Env.tickDurationMillis,
           ntpPoolUrl: Env.ntpPoolUrl,
-          escrowExpirationTicks: Env.escrowExpirationTicks,
+          channelHoldExpirationTicks: Env.channelHoldExpirationTicks,
         }),
       ),
     );
@@ -103,7 +103,7 @@ export default class AccountManager extends TypedEventEmitter<{
   }
 
   public async getBrokerBalance(host: string, identity: string): Promise<bigint> {
-    return await BrokerEscrowSource.getBalance(host, identity);
+    return await BrokerChannelHoldSource.getBalance(host, identity);
   }
 
   public async getBrokerAccounts(): Promise<IDatabrokerAccount[]> {
@@ -360,14 +360,14 @@ export default class AccountManager extends TypedEventEmitter<{
       }
       const result = syncs.reduce(
         (x, next) => {
-          x.escrowNotarizations.push(...next.escrowNotarizations);
+          x.channelHoldNotarizations.push(...next.channelHoldNotarizations);
           x.balanceChanges.push(...next.balanceChanges);
           x.jumpAccountConsolidations.push(...next.jumpAccountConsolidations);
           x.mainchainTransfers.push(...next.mainchainTransfers);
           return x;
         },
         {
-          escrowNotarizations: [],
+          channelHoldNotarizations: [],
           balanceChanges: [],
           jumpAccountConsolidations: [],
           mainchainTransfers: [],
