@@ -8,6 +8,7 @@ import {
 } from '@ulixee/commons/lib/Logger';
 import { app } from 'electron';
 import * as Path from 'path';
+import { inspect } from 'util';
 
 Object.assign(console, log.functions);
 
@@ -28,13 +29,18 @@ export default class UlixeeLogger extends Log {
 
     if (level === 'warn' || level === 'error') {
       printData.sessionId = entry.sessionId;
-      printData.sessionName = loggerSessionIdNames.get(entry.sessionId) ?? undefined;
+      if (entry.sessionId) {
+        printData.sessionName = loggerSessionIdNames.get(entry.sessionId) ?? undefined;
+      }
     }
 
     const params = Object.keys(printData).length ? [printData] : [];
     if (error) params.push(error);
 
-    const args = [`[${printablePath}] ${entry.action}`, ...params];
+    const args = [
+      `[${printablePath}] ${entry.action}`,
+      ...params.map(x => inspect(x, false, 5, this.useColors)),
+    ];
     if (level === 'stats') {
       log.debug(...args);
     } else {
@@ -48,3 +54,5 @@ export default class UlixeeLogger extends Log {
     });
   }
 }
+
+UlixeeLogger.register();

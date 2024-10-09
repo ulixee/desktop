@@ -1,12 +1,15 @@
-import '@ulixee/commons/lib/SourceMapSupport';
-import { app } from 'electron';
-import { Menubar } from './lib/Menubar';
-import './lib/util/UlixeeLogger';
 import './lib/util/defaultEnvVars';
+import './lib/util/UlixeeLogger';
+import '@ulixee/commons/lib/SourceMapSupport';
+import UlixeeConfig from '@ulixee/commons/config';
+import { app } from 'electron';
+import { loadEnv } from '@ulixee/commons/lib/envUtils';
+import { Menubar } from './lib/Menubar';
 import { version } from '../../package.json';
 
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
 process.env.DEVTOOLS_PORT ??= '8315';
+loadEnv(UlixeeConfig.global.directoryPath);
 
 app.commandLine.appendSwitch('remote-debugging-port', process.env.DEVTOOLS_PORT);
 
