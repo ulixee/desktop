@@ -209,7 +209,7 @@
           <slot v-if="account.heldBalance > 0n">
             <span class="mr-3 whitespace-nowrap text-right font-light">On Hold:</span>
             <span class="text-fuchsia-700"> {{ toArgons(account.heldBalance) }}</span
-            >>
+            >
           </slot>
 
           <span class="col-span-2 h-1 border-t border-gray-300">&nbsp;</span>

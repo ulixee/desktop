@@ -21,7 +21,7 @@ import Versions from './views/datastore-details/Versions.vue';
 import Datastores from './views/Datastores.vue';
 import GettingStartedChromeAlive from './views/getting-started/ChromeAlive.vue';
 import GettingStartedClone from './views/getting-started/Clone.vue';
-import GettingStartedCredit from './views/getting-started/Credit.vue';
+import GettingStartedQueryPayment from './views/getting-started/QueryPayment.vue';
 import GettingStartedDatastore from './views/getting-started/Datastore.vue';
 import GettingStartedDeploy from './views/getting-started/Deploy.vue';
 import GettingStartedHero from './views/getting-started/Hero.vue';
@@ -40,6 +40,7 @@ declare global {
     appBridge: {
       send(api: string, args: any): Promise<any>;
       getPrivateApiHost(): string;
+      getFilePath(file: File): string;
     };
     load(url: string): void;
   }
@@ -56,6 +57,19 @@ window.load = function load(host: string) {
 
   const router = VueRouter.createRouter({
     history: VueRouter.createWebHashHistory(),
+    scrollBehavior(to, from, savedPosition) {
+      // if (to.hash) {
+      //   // Required because our <RouterView> is wrapped in a <Transition>
+      //   // So elements are mounted after a delay
+      //   return tryScrollToAnchor(to.hash, 1000, 100);
+      // }
+
+      if (savedPosition) {
+        return savedPosition;
+      } else {
+        return { top: 0 };
+      }
+    },
     routes: [
       {
         path: '/getting-started',
@@ -67,7 +81,7 @@ window.load = function load(host: string) {
           { path: 'deploy', component: GettingStartedDeploy },
           { path: 'payment', component: GettingStartedPayment },
           { path: 'query', component: GettingStartedQuery },
-          { path: 'credit', component: GettingStartedCredit },
+          { path: 'queryPayment', component: GettingStartedQueryPayment },
           { path: 'datastore', component: GettingStartedDatastore },
           { path: 'clone', component: GettingStartedClone },
         ],

@@ -1,5 +1,5 @@
 // @ts-ignore
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('appBridge', {
   async send<T>(api: string, args: any = {}): Promise<T> {
@@ -18,6 +18,9 @@ contextBridge.exposeInMainWorld('appBridge', {
   },
   getPrivateApiHost(): string {
     return ipcRenderer.sendSync('getPrivateApiHost');
+  },
+  getFilePath(file: File): string {
+    return webUtils.getPathForFile(file);
   },
 });
 
