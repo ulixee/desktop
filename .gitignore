@@ -4,6 +4,7 @@ out
 .DS_Store
 *.log*
 packages
-ui
-main
+./ui
+./main
 .idea
+scripts/*.js

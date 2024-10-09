@@ -69,7 +69,9 @@ export default Vue.defineComponent({
     const datastoreId = route.params.datastoreId as string;
     const version = route.params.version as string;
     const { datastoresById } = storeToRefs(datastoresStore);
-    datastoresStore.refreshMetadata(datastoreId, version);
+    const selectedCloud = datastoresStore.getCloud(datastoreId, version);
+
+    datastoresStore.refreshMetadata(datastoreId, version, selectedCloud);
 
     const activeEntity = Vue.ref<{ name: string; type: string; description: string; schema: any, example: IDatastoreMeta['examplesByEntityName'][0] }>(
       null,

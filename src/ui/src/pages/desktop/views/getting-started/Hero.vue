@@ -42,14 +42,14 @@
       prefer javascript). <br /><br />
       You'll need to install Hero into your project (and Typescript for this example):
       <!-- prettier-ignore -->
-      <Prism language="shell">
+      <Prism language="bash">
         npm i --save-dev typescript
         npm i --save @ulixee/hero
-        npx tsc init && npx tsc -b
+        npx tsc --init && npx tsc -b
       </Prism>
       <br />
       Now run your script:
-      <Prism language="shell"> node ./ulixee.org.js </Prism>
+      <Prism language="bash"> node ./ulixee.org.js </Prism>
     </p>
 
     <p

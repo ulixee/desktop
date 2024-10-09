@@ -6,7 +6,7 @@
     :close-handler="onClose"
   >
     <div class="divider-y divider-slate-100 my-5">
-      <div class="px-3 mb-2 font-light text-med">
+      <div class="text-med mb-2 px-3 font-light">
         Wire up an account you already created with a Databroker. NOTE: this will not create a new
         account with the databroker!
       </div>
@@ -17,16 +17,30 @@
         </p>
 
         <div class="my-5">
-          <div class="mb-1 whitespace-nowrap font-light">User Identity</div>
+          <div class="mb-1 whitespace-nowrap font-light">User Identity Path</div>
           <div class="mb-2 font-thin">
-            The user identity you registered with this Databroker (starts with id1..).
+            The path to the UserIdentity file you registered with this Databroker
           </div>
           <div class="relative">
             <input
-              v-model="userIdentity"
+              v-model="pemPath"
               type="text"
-              placeholder="eg, id1xv7empyzlwuvlshs2vlf9eruf72jeesr8yxrrd3esusj75qsr6jqj6dv3p"
-              class="rounded-md border border-gray-300 p-3 placeholder-gray-400 w-full"
+              placeholder="eg, ~/ulixee/identity/id1xv7empyzlwuvlshs2vlf9eruf72jeesr8yxrrd3esusj75qsr6jqj6dv3p"
+              class="w-full rounded-md border border-gray-300 p-3 placeholder-gray-400"
+            />
+          </div>
+        </div>
+        <div class="my-5">
+          <div class="mb-1 whitespace-nowrap font-light">User Identity Passphrase</div>
+          <div class="mb-2 font-thin">
+            The passphrase to your UserIdentity file. Leave blank if you don't have one.
+          </div>
+          <div class="relative">
+            <input
+              v-model="pemPassword"
+              type="text"
+              placeholder="your passphrase (if applicable)"
+              class="w-full rounded-md border border-gray-300 p-3 placeholder-gray-400"
             />
           </div>
         </div>
@@ -37,13 +51,13 @@
               v-model="host"
               type="url"
               placeholder="The url for this databroker"
-              class="rounded-md border border-gray-300 p-3 placeholder-gray-400 w-full"
+              class="w-full rounded-md border border-gray-300 p-3 placeholder-gray-400"
             />
           </div>
         </div>
 
         <div class="my-5">
-          <div class="mb-1 whitespace-nowrap text-med font-light">Display Name (optional)</div>
+          <div class="text-med mb-1 whitespace-nowrap font-light">Display Name (optional)</div>
           <div class="mb-2 font-thin">
             The name of your account is an easy way to identify it in Ulixee Desktop.
           </div>
@@ -52,7 +66,7 @@
               v-model="displayName"
               type="text"
               placeholder="Give your account a name"
-              class="rounded-md border border-gray-300 p-3 placeholder-gray-400 w-full"
+              class="w-full rounded-md border border-gray-300 p-3 placeholder-gray-400"
             />
           </div>
         </div>
@@ -88,15 +102,16 @@ export default Vue.defineComponent({
     return {
       displayName: Vue.ref<string>(''),
       host: Vue.ref<string>(''),
-      userIdentity: Vue.ref<string>(''),
+      pemPath: Vue.ref<string>(''),
+      pemPassword: Vue.ref<string>(''),
       modal: Vue.ref<typeof Modal>(null),
       errorMessage: Vue.ref<string>(),
     };
   },
   methods: {
     async create() {
-      if (!this.userIdentity) {
-        this.errorMessage = 'User identity is required';
+      if (!this.pemPath) {
+        this.errorMessage = 'Path to your UserIdentity is required';
         return;
       }
       if (!this.host) {
@@ -105,7 +120,13 @@ export default Vue.defineComponent({
       }
 
       try {
-        await useWalletStore().addBrokerAccount(this.host, this.userIdentity, this.displayName);
+        const password = this.pemPassword.length ? this.pemPassword : undefined;
+        await useWalletStore().addBrokerAccount(
+          this.host,
+          this.pemPath,
+          this.displayName,
+          password,
+        );
       } catch (e) {
         this.errorMessage = e.message;
         return;
@@ -121,7 +142,8 @@ export default Vue.defineComponent({
       requestAnimationFrame(() => {
         this.displayName = '';
         this.host = '';
-        this.userIdentity = '';
+        this.pemPassword = '';
+        this.pemPath = '';
       });
     },
   },

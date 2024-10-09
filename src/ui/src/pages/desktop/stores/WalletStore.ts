@@ -12,6 +12,8 @@ export const useWalletStore = defineStore('walletStore', () => {
     credits: [],
     brokerAccounts: [],
     formattedBalance: '0',
+    localchainForQuery: 'primary',
+    localchainForCloudNode: '',
   } as IWallet);
 
   window.desktopApi.on('Wallet.updated', data => {
@@ -29,22 +31,28 @@ export const useWalletStore = defineStore('walletStore', () => {
     return account;
   }
 
-  async function addBrokerAccount(host: string, userIdentity: string, name?: string) {
+  async function addBrokerAccount(
+    host: string,
+    pemPath: string,
+    name?: string,
+    pemPassword?: string,
+  ) {
     const account = await window.desktopApi.send('User.addBrokerAccount', {
       name,
       host,
-      userIdentity,
+      pemPassword,
+      pemPath,
     });
     wallet.value.brokerAccounts.push(account);
     return account;
   }
 
-  async function transferFromMainchain(milligons: bigint, address?: string) {
+  async function transferFromMainchain(milligons: bigint, address: string) {
     await window.desktopApi.send('Argon.transferFromMainchain', { milligons, address });
     await load();
   }
 
-  async function transferToMainchain(milligons: bigint, address?: string) {
+  async function transferToMainchain(milligons: bigint, address: string) {
     await window.desktopApi.send('Argon.transferToMainchain', { milligons, address });
     await load();
   }

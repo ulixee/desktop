@@ -8,7 +8,7 @@
         <div class="my-5">
           <div class="mb-1 whitespace-nowrap text-sm font-light">Display Name</div>
           <div class="mb-2 text-sm font-thin">
-            The name of your account is an easy way to identify it in Ulixee Desktop, and on your
+            The name of your account is an easy way to identify it in Ulixee Desktop and on your
             filesystem.
           </div>
           <div class="relative">

@@ -87,7 +87,7 @@
         <p class="mb-2 font-light">
           You'll need to install Node.js 18+ on the remote machine. Then run these commands:
           <!-- prettier-ignore -->
-          <Prism language="shell">
+          <Prism language="bash">
             npm i --save @ulixee/cloud
             # if debian linux
             sudo $(npx install-browser-deps)
@@ -198,6 +198,7 @@ export default Vue.defineComponent({
         this.hasValidAddress = false;
         this.inputIpAddress = '';
         this.inputCloudName = '';
+        this.modal.close();
       } catch (error: any) {
         this.errorMessage = error.message;
       }

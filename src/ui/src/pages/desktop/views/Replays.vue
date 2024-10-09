@@ -60,6 +60,7 @@
       </transition>
     </div>
   </Listbox>
+  <div class='align-middle text-center mt-1 mb-2 italic text-gray-700 text-sm'>If you can't see your Cloud, you might need to upload your admin identity to use it</div>
   <div
     class="overflow-hidden rounded-lg border-b border-gray-300 bg-white shadow-lg ring-1 ring-black ring-opacity-5"
   >

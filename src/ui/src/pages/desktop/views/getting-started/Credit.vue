@@ -46,7 +46,7 @@
       <p class="font-light">
         Great, you created a credit. Drag it to your Desktop and then open the file. Once you accept
         it, run your query:
-        <Prism language="shell">
+        <Prism language="bash">
           node ./query.js
         </Prism>
       </p>

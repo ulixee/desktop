@@ -66,7 +66,7 @@
             <a
               v-if="!installed"
               type="button"
-              class="font-semibold text-fuchsia-800 underline hover:text-fuchsia-800/70"
+              class="font-semibold text-fuchsia-800 underline hover:text-fuchsia-800/70 cursor-pointer"
               @click.prevent="install"
             >
               <ArrowDownTrayIcon

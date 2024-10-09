@@ -34,14 +34,14 @@ export const useGettingStartedStore = defineStore('gettingStartedStore', () => {
       href: 'payment',
     },
     {
+      name: 'Query your Datastore with Payment',
+      description: 'Add Localchain funding and query.',
+      href: 'queryPayment',
+    },
+    {
       name: 'Deploy your Datastore',
       description: 'You can deploy in one step to our public cloud, or to your own server.',
       href: 'deploy',
-    },
-    {
-      name: 'Create a Shareable Credit',
-      description: 'Create a credit - you can send it to a friend or test yourself.',
-      href: 'credit',
     },
     {
       name: 'Clone a Datastore',
@@ -139,6 +139,21 @@ export const useGettingStartedStore = defineStore('gettingStartedStore', () => {
             entry.summary.scriptEntrypoint.includes('ulixee.org.') &&
             entry.details &&
             Object.values(entry.details.extractorsByName).some(x => x.netBasePrice > 0)
+          ) {
+            stopWatch();
+            done();
+          }
+        }
+      });
+    },
+    queryPayment(done) {
+      const datastoreStore = useDatastoreStore();
+      const { datastoresById } = storeToRefs(datastoreStore);
+      const stopWatch = watch(datastoresById.value, value => {
+        for (const entry of Object.values(value)) {
+          if (
+            entry.summary.scriptEntrypoint.includes('ulixee.org.') &&
+            entry.summary.stats.averageTotalPricePerQuery > 0
           ) {
             stopWatch();
             done();

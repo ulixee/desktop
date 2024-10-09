@@ -10,8 +10,8 @@
               :to="item.href"
               :class="[
                 item.href === $route.path ||
-                  $route.path.startsWith(item.href.slice(0, -1)) ||
-                  item.alias === $route.path
+                $route.path.startsWith(item.href.slice(0, -1)) ||
+                item.alias === $route.path
                   ? 'bg-gray-900 text-white'
                   : 'text-gray-300 hover:bg-gray-700 hover:text-white',
                 'group flex items-center rounded-md px-2 py-2 text-sm font-medium',
@@ -19,10 +19,7 @@
             >
               <component
                 :is="item.icon"
-                :class="[
-                  'text-gray-400 group-hover:text-gray-300',
-                  'mr-3 h-6 w-6 flex-shrink-0',
-                ]"
+                :class="['text-gray-400 group-hover:text-gray-300', 'mr-3 h-6 w-6 flex-shrink-0']"
                 aria-hidden="true"
               />
               {{ item.name }}
@@ -44,12 +41,12 @@
               </div>
               <div class="ml-3 overflow-hidden">
                 <p
-                  class="text-lg text-gray-200 w-full overflow-hidden text-ellipsis "
+                  class="w-full overflow-hidden text-ellipsis text-lg text-gray-200"
                   :class="{ 'group-hover:text-gray-300': !walletActive }"
                 >
                   Wallet
                   <span
-                    class="ml-1 font-bold text-xl text-white"
+                    class="ml-1 text-xl font-bold text-white"
                     :class="{ 'group-hover:text-gray-300': !walletActive }"
                   >
                     {{ wallet.formattedBalance }}
@@ -67,23 +64,10 @@
 </template>
 
 <script lang="ts">
-import * as Vue from 'vue';
 import ArgonIcon from '@/assets/icons/argon.svg';
-import {
-  BellIcon,
-  BuildingStorefrontIcon,
-  CalendarIcon,
-  ChartBarIcon,
-  ChevronDownIcon,
-  CloudIcon,
-  FolderIcon,
-  HomeIcon,
-  RocketLaunchIcon,
-  InboxIcon,
-  UsersIcon,
-  VideoCameraIcon,
-  XMarkIcon,
-} from '@heroicons/vue/24/outline';
+import { useCloudsStore } from '@/pages/desktop/stores/CloudsStore';
+import { useDatastoreStore } from '@/pages/desktop/stores/DatastoresStore';
+import { useWalletStore } from '@/pages/desktop/stores/WalletStore';
 import {
   Dialog,
   DialogPanel,
@@ -95,18 +79,31 @@ import {
   TransitionRoot,
 } from '@headlessui/vue';
 import { MagnifyingGlassIcon } from '@heroicons/vue/20/solid';
+import {
+  BellIcon,
+  BuildingStorefrontIcon,
+  CalendarIcon,
+  ChartBarIcon,
+  ChevronDownIcon,
+  CloudIcon,
+  FolderIcon,
+  HomeIcon,
+  InboxIcon,
+  RocketLaunchIcon,
+  UsersIcon,
+  VideoCameraIcon,
+  XMarkIcon,
+} from '@heroicons/vue/24/outline';
 import IArgonFile from '@ulixee/platform-specification/types/IArgonFile';
-import { useCloudsStore } from '@/pages/desktop/stores/CloudsStore';
-import { useDatastoreStore } from '@/pages/desktop/stores/DatastoresStore';
-import { useWalletStore } from '@/pages/desktop/stores/WalletStore';
 import { storeToRefs } from 'pinia';
-import Replays from './Replays.vue';
+import * as Vue from 'vue';
 import Clouds from './Clouds.vue';
 import Datastores from './Datastores.vue';
-import Overview from './Overview.vue';
-import Wallet from './Wallet.vue';
 import DropModal from './DropModal.vue';
+import Overview from './Overview.vue';
 import ReceiveArgonsModal from './ReceiveArgonsModal.vue';
+import Replays from './Replays.vue';
+import Wallet from './Wallet.vue';
 
 export default Vue.defineComponent({
   name: 'DesktopHome',
@@ -194,8 +191,8 @@ export default Vue.defineComponent({
       this.dragend(e);
 
       for (const f of e.dataTransfer.files) {
-        const path = (f as any).path;
-        if (!path.endsWith('.arg')) {
+        const path = window.appBridge.getFilePath(f);
+        if (!path?.endsWith(`.argon`)) {
           alert(`Unexpected File Drop (${path})`);
           continue;
         }

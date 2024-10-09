@@ -10,9 +10,14 @@
       >. The Argon has several unique properties, including an ability to transact Peer-to-Peer for
       units as small as one-millionth of an Argon (1 microgon) with extremely low fees. Argons are
       worth approximately 1 US Dollar. <br /><br />
-      We're currently finishing up the legal framework around allowing you to earn and sell Argons.
-      In the interim, we'll show you how to use the fully operational credits system.
-      <br /><br />
+      Argons are now in a Testnet phase, so you can experiment with them without any cost. Learn
+      more about using the Argon in Ulixee
+      <a
+        href="https://ulixee.org/docs/datastore/guides/using-localchain"
+        target="_blank"
+        class="text-purple-700 underline"
+        >here</a
+      >. <br /><br />
       Let's modify our Datastore to add a per-query price of ~1 US cent:
     </p>
 
@@ -73,7 +78,7 @@
     <p class="my-5">
       <br />
       Now re-start your script:
-      <Prism language="shell"> npx @ulixee/datastore start ./ulixee.org.ts </Prism>
+      <Prism language="bash"> npx @ulixee/datastore start ./ulixee.org.ts </Prism>
     </p>
 
     <p v-if="step.isComplete" class="my-10 border-t-2 border-fuchsia-800 pt-5 font-light">

@@ -1,7 +1,5 @@
 <template>
-  <div class="y-0 l-0 r-0 drag-bar absolute h-8 w-full">
-&nbsp;
-  </div>
+  <div class="y-0 l-0 r-0 drag-bar absolute h-8 w-full">&nbsp;</div>
   <Sidebar />
 
   <div class="flex flex-col pl-64">
@@ -9,6 +7,20 @@
       <div class="py-6">
         <div class="mx-auto max-w-7xl px-8">
           <div class="transition-opacity duration-150 ease-linear">
+            <button
+              @click="goBack()"
+              :disabled="!hasBack"
+              class="text-gray-500 shadow-sm p-2 rounded-full hover:bg-gray-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-800"
+            >
+              <ArrowLeftIcon class="h-5" aria-hidden="true" />
+            </button>
+            <button
+              @click="goForward()"
+              v-if='hasForward'
+              class="ml-2 text-gray-500 shadow-sm  p-2 rounded-full hover:bg-gray-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-800"
+            >
+              <ArrowRightIcon class="h-5" aria-hidden="true" />
+            </button>
             <RouterView />
           </div>
         </div>
@@ -18,10 +30,12 @@
 </template>
 
 <script lang="ts">
+import { ref } from 'vue';
 import * as Vue from 'vue';
-import { RouterView } from 'vue-router';
+import { RouterView, useRouter } from 'vue-router';
 import Sidebar from './views/Sidebar.vue';
-import Datastores from "./views/Datastores.vue";
+import Datastores from './views/Datastores.vue';
+import { ArrowLeftIcon, ArrowRightIcon } from '@heroicons/vue/24/outline';
 
 export default Vue.defineComponent({
   name: 'App',
@@ -29,11 +43,33 @@ export default Vue.defineComponent({
     Sidebar,
     Datastores,
     RouterView,
+    ArrowLeftIcon,
+    ArrowRightIcon,
   },
   setup() {
     document.title = 'Ulixee Desktop';
+    const router = useRouter();
+
+    // Reactive variables to track back and forward navigation
+    const hasBack = ref(!!history.state?.back);
+    const hasForward = ref(!!history.state?.forward);
+    router.afterEach(() => {
+      hasBack.value = !!history.state?.back;
+      hasForward.value = !!history.state?.forward;
+    });
+    return {
+      hasForward,
+      hasBack,
+    };
   },
-  methods: {},
+  methods: {
+    goBack() {
+      this.$router.back();
+    },
+    goForward() {
+      this.$router.forward();
+    },
+  },
 });
 </script>
 

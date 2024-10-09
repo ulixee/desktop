@@ -12,14 +12,19 @@
     <p class="mb-2 font-light">
       You'll need to install Node.js 18+ on the remote machine. Then run these commands:
       <!-- prettier-ignore -->
-      <Prism language="shell">
+      <Prism language="bash">
         npm install -g @ulixee/cloud
         # if debian linux
         sudo $(npx install-browser-deps)
 
+        export DEBUG=ulx*;
+        export NODE_ENV=production;
         # start server on port 1818.
         # NOTE: ensure this port is open for external access
-        npx @ulixee/cloud start -p 1818
+        npx @ulixee/cloud start \
+          --public-host=$(curl 'https://api.ipify.org') \
+          --argon-localchain-create-if-missing \
+          --argon-mainchain-url=wss://rpc.testnet.argonprotocol.org
       </Prism>
     </p>
     <p class="mt-5 text-sm font-light text-gray-600">
@@ -32,7 +37,7 @@
       </router-link>
       tab and click to add a Cloud.
     </p>
-    <h4 class="text-md mb-2 mt-5 font-semibold">Admin Access</h4>
+    <h4 class="text-md mb-2 mt-5 font-semibold">Admin Access & Datastore Id</h4>
     <p class="font-light">
       Let's make some final changes before you upload your dbx. When you deploy a Datastore, you
       need to assign it a unique id and version. We'll add those now.
@@ -106,14 +111,14 @@
       Copy this code into your
       <span class="mx-0.5 bg-gray-200 p-1 font-light">ulixee.org.ts</span> file. <br /><br />
       Now let's deploy your Datastore:
-      <Prism language="shell"
-        >npx @ulixee/datastore deploy ./ulixee.org.ts -h {{ yourCloudAddress }}</Prism
+      <Prism language="bash"
+        >npx @ulixee/datastore deploy ./ulixee.org.ts -u {{ yourCloudAddress }}</Prism
       >
     </p>
 
     <p
       v-if="step.isComplete"
-      class="grid-row mb-10 grid grid-cols-2 items-center bg-fuchsia-800/10 p-5 text-gray-700"
+      class="mt-10 grid-row mb-10 grid grid-cols-2 items-center bg-fuchsia-800/10 p-5 text-gray-700"
     >
       <span class="text-lg">Well done!</span>
       <button

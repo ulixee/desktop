@@ -14,7 +14,7 @@
           {{ errorMessage }}
         </p>
 
-        <Prism language="shell" class="w-full">
+        <Prism language="bash" class="w-full">
           npx @ulixee/datastore clone "{{ cloudAddress }}"
         </Prism>
 

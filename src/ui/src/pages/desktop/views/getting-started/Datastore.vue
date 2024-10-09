@@ -90,14 +90,23 @@
       <span class="mx-0.5 bg-gray-200 p-1 font-light">ulixee.org.ts</span> file. <br /><br />
       You'll need to install Datastores into your project.
       <!-- prettier-ignore -->
-      <Prism language="shell">
+      <Prism language="bash">
         npm i --save @ulixee/datastore-plugins-hero
         npm i --save-dev @ulixee/datastore-packager
       </Prism>
       <br />
+      This example doesn't use Typescript "strict", so make sure to turn that off in your tsconfig.json
+      <!-- prettier-ignore -->
+      <Prism language="bash">
+        ...
+        /* Type Checking */
+        "strict": false,                                      /* Enable all strict type-checking options. */
+      </Prism>
+
+      <br />
       Now start your script
       <span class="font-light text-gray-700">(NOTE: you can point at your .ts file)</span>:
-      <Prism language="shell">npx @ulixee/datastore start ./ulixee.org.ts</Prism>
+      <Prism language="bash">npx @ulixee/datastore start ./ulixee.org.ts</Prism>
     </p>
 
     <p v-if="step.isComplete" class="my-10 border-t-2 border-fuchsia-800 pt-5">

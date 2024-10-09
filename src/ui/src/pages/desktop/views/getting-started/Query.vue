@@ -9,14 +9,7 @@
       Golang, Python, etc on your server.
       <br /><br />
       The "connection" string for your Datastore was emitted in the console when you ran<br />
-      <span class="m-0.5 bg-gray-200 p-1">@ulixee/datastore start ./ulixee.org.ts</span>. It can
-      also be found for each
-      <router-link
-        :to="'/datastore/' + datastoreId + '@v' + version + '/clouds'"
-        class="font-semibold text-fuchsia-800 underline hover:text-fuchsia-800/70"
-        >Datastore</router-link
-      >
-      in this app.
+      <span class="m-0.5 bg-gray-200 p-1">@ulixee/datastore start ./ulixee.org.ts</span>.
 
       <br /><br />
       Let's see how easy it is to query our Datastore with the Client library.
@@ -51,14 +44,14 @@
         will install in your "application" tier.</span
       >
       <!-- prettier-ignore -->
-      <Prism language="shell">
+      <Prism language="bash">
         npm i --save @ulixee/client
         # build typescript again
         npx tsc -b
       </Prism>
       <br />
       Now run your file.
-      <Prism language="shell"> node ./query.js </Prism>
+      <Prism language="bash"> node ./query.js </Prism>
     </p>
 
     <p v-if="step.isComplete" class="my-10 border-t-2 border-fuchsia-800 pt-5">
