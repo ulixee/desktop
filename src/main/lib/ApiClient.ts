@@ -1,13 +1,13 @@
-import { Serializable } from 'child_process';
-import { IChromeAliveSessionApis, IDesktopAppApis } from '@ulixee/desktop-interfaces/apis';
 import { TypedEventEmitter } from '@ulixee/commons/lib/eventUtils';
-import { ConnectionToCore, WsTransportToCore } from '@ulixee/net';
-import ITransport from '@ulixee/net/interfaces/ITransport';
-import ICoreResponsePayload from '@ulixee/net/interfaces/ICoreResponsePayload';
-import ICoreRequestPayload from '@ulixee/net/interfaces/ICoreRequestPayload';
+import { toUrl } from '@ulixee/commons/lib/utils';
+import { IChromeAliveSessionApis, IDesktopAppApis } from '@ulixee/desktop-interfaces/apis';
 import IChromeAliveSessionEvents from '@ulixee/desktop-interfaces/events/IChromeAliveSessionEvents';
 import IDesktopAppEvents from '@ulixee/desktop-interfaces/events/IDesktopAppEvents';
-import { toUrl } from '@ulixee/commons/lib/utils';
+import ICoreEventPayload from '@ulixee/net/interfaces/ICoreEventPayload';
+import { ConnectionToCore, WsTransportToCore } from '@ulixee/net';
+import ICoreRequestPayload from '@ulixee/net/interfaces/ICoreRequestPayload';
+import ICoreResponsePayload from '@ulixee/net/interfaces/ICoreResponsePayload';
+import ITransport from '@ulixee/net/interfaces/ITransport';
 
 export default class ApiClient<
   TApis extends IDesktopAppApis | IChromeAliveSessionApis,
@@ -59,12 +59,12 @@ export default class ApiClient<
     this.emit('close');
   }
 
-  private onMessage(message: Serializable): void {
-    if (message === 'exit') {
+  private onMessage(message: ICoreEventPayload<TEvents, any> | any): void {
+    if (typeof message === 'string' && message === 'exit') {
       this.onEvent('App.quit' as any);
       return;
     }
-    const apiEvent = (message as any).event;
+    const apiEvent = message.event;
     this.onEvent(apiEvent.eventType, apiEvent.data);
   }
 }

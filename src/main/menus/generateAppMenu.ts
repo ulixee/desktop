@@ -1,10 +1,11 @@
 import { app, BrowserWindow, ipcMain, Menu, MenuItem, shell } from 'electron';
 import ChromeAliveWindow from '../lib/ChromeAliveWindow';
 import MenuItemConstructorOptions = Electron.MenuItemConstructorOptions;
+import BaseWindow = Electron.BaseWindow;
 
 const isMac = process.platform === 'darwin';
 
-export default function generateAppMenu(loadedChromeAlive: ChromeAliveWindow): Menu {
+export default function generateAppMenu(loadedChromeAlive: ChromeAliveWindow | null): Menu {
   const template: any = [
     ...(isMac
       ? [
@@ -130,16 +131,16 @@ export default function generateAppMenu(loadedChromeAlive: ChromeAliveWindow): M
 
 function createMenuItem(
   shortcuts: string[],
-  action: (window: BrowserWindow, menuItem: MenuItem, shortcutIndex: number) => void,
-  label: string = null,
+  action: (window: BaseWindow, menuItem: MenuItem, shortcutIndex: number) => void,
+  label: string = '',
   enabled = true,
 ): MenuItemConstructorOptions[] {
   return shortcuts.map((shortcut, key) => ({
     accelerator: shortcut,
-    visible: label != null && key === 0,
-    label: label != null && key === 0 ? label : '',
+    visible: !!label && key === 0,
+    label: !!label && key === 0 ? label : '',
     enabled,
-    click: (menuItem: MenuItem, browserWindow: BrowserWindow) =>
-      action(browserWindow, menuItem, key),
+    click: (menuItem: MenuItem, browserWindow: BaseWindow | undefined, _) =>
+      action(browserWindow!, menuItem, key),
   }));
 }

@@ -1,10 +1,10 @@
 {
   "include": ["scripts/**/*.ts"],
-  "exclude": ["node_modules", "ui", "dist", "packages"],
+  "exclude": ["node_modules", "ui", "dist", "packages", "src"],
   "compilerOptions": {
     "module": "CommonJS",
     "esModuleInterop": true,
-    "target": "ES2022",
+    "target": "ES2022"
   },
   "references": [{ "path": "./tsconfig.node.json" }, { "path": "./tsconfig.web.json" }]
 }

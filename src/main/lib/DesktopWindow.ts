@@ -12,18 +12,18 @@ export default class DesktopWindow extends TypedEventEmitter<{
   focus: void;
 }> {
   public get isOpen(): boolean {
-    return this.#window?.isVisible() === true;
+    return this.#window?.isVisible() ?? false;
   }
 
   public get isFocused(): boolean {
-    return this.#window?.isFocused();
+    return this.#window?.isFocused() ?? false;
   }
 
-  public get webContents(): WebContents {
+  public get webContents(): WebContents | undefined {
     return this.#window?.webContents;
   }
 
-  #window: BrowserWindow;
+  #window?: BrowserWindow;
   #events = new EventSubscriber();
 
   #windowStateKeeper = new WindowStateKeeper('DesktopWindow');
@@ -34,7 +34,7 @@ export default class DesktopWindow extends TypedEventEmitter<{
   }
 
   public focus(): void {
-    this.#window.moveTop();
+    this.#window?.moveTop();
   }
 
   public async open(show = true): Promise<void> {
@@ -76,7 +76,7 @@ export default class DesktopWindow extends TypedEventEmitter<{
     });
 
     this.#events.on(this.#window.webContents, 'context-menu', (e, params) => {
-      generateContextMenu(params, this.#window.webContents).popup();
+      if (this.#window?.webContents) generateContextMenu(params, this.#window.webContents).popup();
     });
     this.#events.on(this.#window, 'focus', this.emit.bind(this, 'focus'));
     this.#events.on(this.#window, 'close', this.close.bind(this));
@@ -92,9 +92,9 @@ export default class DesktopWindow extends TypedEventEmitter<{
   public close(e, force = false): void {
     if (force) {
       this.#events.close();
-      this.#window = null;
+      this.#window = undefined;
     } else {
-      this.#window.hide();
+      this.#window?.hide();
       e.preventDefault();
     }
     this.emit('close');

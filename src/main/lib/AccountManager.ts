@@ -1,14 +1,3 @@
-import EventSubscriber from '@ulixee/commons/lib/EventSubscriber';
-import TypedEventEmitter from '@ulixee/commons/lib/TypedEventEmitter';
-import Logger from '@ulixee/commons/lib/Logger';
-import Queue from '@ulixee/commons/lib/Queue';
-import Env from '@ulixee/datastore/env';
-import IDatastoreHostLookup from '@ulixee/datastore/interfaces/IDatastoreHostLookup';
-import ILocalUserProfile from '@ulixee/datastore/interfaces/ILocalUserProfile';
-import { IDatabrokerAccount, IWallet } from '@ulixee/datastore/interfaces/IPaymentService';
-import DatastoreLookup from '@ulixee/datastore/lib/DatastoreLookup';
-import LocalUserProfile from '@ulixee/datastore/lib/LocalUserProfile';
-import { IArgonFileMeta } from '@ulixee/desktop-interfaces/apis';
 import {
   BalanceSyncResult,
   CryptoScheme,
@@ -16,12 +5,29 @@ import {
   LocalchainOverview,
   MainchainClient,
 } from '@argonprotocol/localchain';
-import { ArgonFileSchema } from '@ulixee/platform-specification/types/IArgonFile';
+import EventSubscriber from '@ulixee/commons/lib/EventSubscriber';
+import Logger from '@ulixee/commons/lib/Logger';
+import Queue from '@ulixee/commons/lib/Queue';
+import TypedEventEmitter from '@ulixee/commons/lib/TypedEventEmitter';
+import Env from '@ulixee/datastore/env';
+import IDatastoreHostLookup from '@ulixee/datastore/interfaces/IDatastoreHostLookup';
+import ILocalchainConfig from '@ulixee/datastore/interfaces/ILocalchainConfig';
+import { IDatabrokerAuthAccount } from '@ulixee/datastore/interfaces/ILocalUserProfile';
+import { IDatabrokerAccount, IWallet } from '@ulixee/datastore/interfaces/IPaymentService';
+import DatastoreLookup from '@ulixee/datastore/lib/DatastoreLookup';
+import LocalUserProfile from '@ulixee/datastore/lib/LocalUserProfile';
+import BrokerChannelHoldSource from '@ulixee/datastore/payments/BrokerChannelHoldSource';
+import LocalchainWithSync from '@ulixee/datastore/payments/LocalchainWithSync';
+import { IArgonFileMeta } from '@ulixee/desktop-interfaces/apis';
+import {
+  ARGON_FILE_EXTENSION,
+  ArgonFileSchema,
+} from '@ulixee/platform-specification/types/IArgonFile';
 import ArgonUtils from '@ulixee/platform-utils/lib/ArgonUtils';
+import Identity from '@ulixee/platform-utils/lib/Identity';
 import { gettersToObject } from '@ulixee/platform-utils/lib/objectUtils';
 import serdeJson from '@ulixee/platform-utils/lib/serdeJson';
 import * as Path from 'path';
-import BrokerChannelHoldSource from '@ulixee/datastore/payments/BrokerChannelHoldSource';
 import { IArgonFile } from './ArgonFile';
 
 const { log } = Logger(module);
@@ -31,17 +37,20 @@ export default class AccountManager extends TypedEventEmitter<{
 }> {
   exited = false;
   events = new EventSubscriber();
-  public localchains: Localchain[] = [];
-  private localchainAddresses = new Map<Localchain, string>();
-  private nextTick: NodeJS.Timeout;
-  private mainchainClient: MainchainClient;
+  public localchains: LocalchainWithSync[] = [];
+  public localchainForQuery?: LocalchainWithSync;
+  public localchainForCloudNode?: LocalchainWithSync;
+  private localchainToAddressCache = new WeakMap<LocalchainWithSync, string>();
+  private nextTick?: NodeJS.Timeout;
+  private mainchainClient?: MainchainClient;
   private queue = new Queue('LOCALCHAIN', 1);
 
   constructor(readonly localUserProfile: LocalUserProfile) {
     super();
-    if (Env.defaultDataDir) {
-      Localchain.setDefaultDir(Path.join(Env.defaultDataDir, 'ulixee', 'localchain'));
-    }
+  }
+
+  public getDefaultLocalchain(): LocalchainWithSync {
+    return this.localchains.find(x => x.name === 'primary') ?? this.localchains[0];
   }
 
   public async loadMainchainClient(url?: string, timeoutMillis?: number): Promise<void> {
@@ -51,7 +60,6 @@ export default class AccountManager extends TypedEventEmitter<{
         this.mainchainClient = await MainchainClient.connect(url, timeoutMillis ?? 10e3);
         for (const localchain of this.localchains) {
           await localchain.attachMainchain(this.mainchainClient);
-          await localchain.updateTicker();
         }
       } catch (error) {
         log.error('Could not connect to mainchain', { error });
@@ -61,19 +69,23 @@ export default class AccountManager extends TypedEventEmitter<{
   }
 
   public async start(): Promise<void> {
-    if (!this.localUserProfile.localchainPaths.length) {
-      await this.addAccount();
+    for (const config of this.localUserProfile.localchains) {
+      await this.loadLocalchain({
+        localchainPath: config.path,
+        disableAutomaticSync: true,
+        // TODO: need to prompt for passwords of needed
+        // keystorePassword: config.hasPassword ? { password: Buffer.from(config.password) } : undefined
+      });
     }
-    this.localchains = await Promise.all(
-      this.localUserProfile.localchainPaths.map(path =>
-        Localchain.loadWithoutMainchain(path, {
-          genesisUtcTime: Env.genesisUtcTime,
-          tickDurationMillis: Env.tickDurationMillis,
-          ntpPoolUrl: Env.ntpPoolUrl,
-          channelHoldExpirationTicks: Env.channelHoldExpirationTicks,
+    if (!this.localUserProfile.localchains.length) {
+      await Promise.all([
+        this.addAccount({ role: 'query' }),
+        this.addAccount({
+          path: Path.join(Localchain.getDefaultDir(), `Cloudnode1.db`),
+          role: 'cloudNode',
         }),
-      ),
-    );
+      ]);
+    }
     void this.loadMainchainClient().then(this.emitWallet.bind(this));
     this.scheduleNextSync();
   }
@@ -84,20 +96,26 @@ export default class AccountManager extends TypedEventEmitter<{
   }
 
   public async addBrokerAccount(
-    config: ILocalUserProfile['databrokers'][0],
+    config: Omit<IDatabrokerAuthAccount, 'userIdentity'>,
   ): Promise<IDatabrokerAccount> {
+    const identity = Identity.loadFromPem(config.pemPath, { keyPassphrase: config.pemPassword });
+    const userIdentity = identity.bech32;
+    Object.assign(config, { userIdentity });
     // check first and throw error if invalid
-    const balance = await this.getBrokerBalance(config.host, config.userIdentity);
+    const balance = await this.getBrokerBalance(config.host, userIdentity);
     const entry = this.localUserProfile.databrokers.find(x => x.host === config.host);
     if (entry) {
-      entry.userIdentity = config.userIdentity;
+      entry.pemPath = config.pemPath;
+      entry.pemPassword = config.pemPassword;
+      entry.userIdentity = userIdentity;
       entry.name = config.name;
     } else {
-      this.localUserProfile.databrokers.push(config);
+      this.localUserProfile.databrokers.push(config as IDatabrokerAuthAccount);
     }
     await this.localUserProfile.save();
     return {
       ...config,
+      userIdentity,
       balance,
     };
   }
@@ -117,70 +135,95 @@ export default class AccountManager extends TypedEventEmitter<{
   }
 
   public async addAccount(
-    config: { path?: string; password?: string; cryptoScheme?: CryptoScheme; suri?: string } = {},
-  ): Promise<Localchain> {
+    config: {
+      path?: string;
+      password?: string;
+      cryptoScheme?: CryptoScheme;
+      suri?: string;
+      role?: 'query' | 'cloudNode';
+    } = {},
+  ): Promise<LocalchainWithSync> {
     config ??= {};
-    let defaultPath = config.path ?? Localchain.getDefaultPath();
-    if (!defaultPath.endsWith('.db')) {
-      defaultPath = Path.join(defaultPath, 'primary.db');
-    }
-    log.info('Adding localchain', {
-      localchainPath: defaultPath,
-    } as any);
     const password = config.password
       ? {
           password: Buffer.from(config.password),
         }
       : undefined;
-    const localchain = await Localchain.loadWithoutMainchain(
-      defaultPath,
-      {
-        ...Env,
-      },
-      password,
-    );
-    this.localchains.push(localchain);
-
-    if (!this.localUserProfile.localchainPaths.includes(localchain.path)) {
-      this.localUserProfile.localchainPaths.push(localchain.path);
-      await this.localUserProfile.save();
+    const localchain = await this.loadLocalchain({
+      localchainPath: config.path,
+      disableAutomaticSync: true,
+      keystorePassword: password,
+    });
+    if (config.role === 'cloudNode') {
+      this.localUserProfile.localchainForCloudNodeName = localchain.name;
+      this.localchainForCloudNode = localchain;
     }
+    if (config.role === 'query') {
+      this.localUserProfile.localchainForQueryName = localchain.name;
+      this.localchainForQuery = localchain;
+    }
+
+    let entry = this.localUserProfile.localchains.find(x => x.path === localchain.path);
+    if (!entry) {
+      entry = {
+        path: localchain.path,
+        hasPassword: !!config.password,
+      };
+      this.localUserProfile.localchains.push(entry);
+    }
+    await this.localUserProfile.save();
+
     if (this.mainchainClient) {
       await localchain.attachMainchain(this.mainchainClient);
-      await localchain.updateTicker();
     }
-    if (!(await localchain.accounts.list()).length) {
-      if (config.suri) {
-        await localchain.keystore.importSuri(
-          config.suri,
-          config.cryptoScheme ?? CryptoScheme.Sr25519,
-          {
-            password: config.password ? Buffer.from(config.password) : undefined,
-          },
-        );
-      } else {
-        await localchain.keystore.bootstrap();
-      }
+    const needsBootstrap = !(await localchain.isCreated());
+    if (needsBootstrap) {
+      await localchain.create(config);
     }
     return localchain;
   }
 
-  public async getAddress(localchain: Localchain): Promise<string> {
-    if (!this.localchainAddresses.has(localchain)) {
-      this.localchainAddresses.set(localchain, await localchain.address);
+  private async loadLocalchain(config: ILocalchainConfig): Promise<LocalchainWithSync> {
+    const localchain = await LocalchainWithSync.load(config);
+    this.localchains.push(localchain);
+
+    if (localchain.name === this.localUserProfile.localchainForQueryName) {
+      this.localchainForQuery = localchain;
     }
-    return this.localchainAddresses.get(localchain);
+    if (localchain.name === this.localUserProfile.localchainForCloudNodeName) {
+      this.localchainForCloudNode = localchain;
+    }
+    return localchain;
   }
 
-  public async getLocalchain(address: String): Promise<Localchain> {
-    if (!address) return null;
+  private sortLocalchains(): void {
+    this.localchains.sort((a, b) => {
+      if (a.name === 'primary') return -1;
+      if (b.name === 'primary') return 1;
+      if (a.name === this.localUserProfile.localchainForQueryName) return -1;
+      if (b.name === this.localUserProfile.localchainForQueryName) return 1;
+      if (a.name === this.localUserProfile.localchainForCloudNodeName) return -1;
+      if (b.name === this.localUserProfile.localchainForCloudNodeName) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  public async getAddress(localchain: LocalchainWithSync): Promise<string | undefined> {
+    if (!this.localchainToAddressCache.has(localchain)) {
+      this.localchainToAddressCache.set(localchain, await localchain.address);
+    }
+    return this.localchainToAddressCache.get(localchain);
+  }
+
+  public async getLocalchain(address?: string): Promise<LocalchainWithSync | undefined> {
+    if (!address) return;
     for (const chain of this.localchains) {
       if ((await this.getAddress(chain)) === address) return chain;
     }
   }
 
-  public async getDatastoreHostLookup(): Promise<IDatastoreHostLookup | null> {
-    return new DatastoreLookup(this.mainchainClient);
+  public async getDatastoreHostLookup(): Promise<IDatastoreHostLookup | undefined> {
+    return new DatastoreLookup(this.mainchainClient ? Promise.resolve(this.mainchainClient) : null);
   }
 
   public async getWallet(): Promise<IWallet> {
@@ -201,6 +244,8 @@ export default class AccountManager extends TypedEventEmitter<{
       brokerAccounts,
       accounts,
       formattedBalance,
+      localchainForQuery: this.localUserProfile.localchainForQueryName,
+      localchainForCloudNode: this.localUserProfile.localchainForCloudNodeName,
     };
   }
 
@@ -213,7 +258,7 @@ export default class AccountManager extends TypedEventEmitter<{
   public async transferLocalToMainchain(address: string, amount: bigint): Promise<void> {
     const localchain = await this.getLocalchain(address);
     if (!localchain) throw new Error('No localchain found for address');
-    const change = localchain.beginChange();
+    const change = localchain.inner.beginChange();
     const account = await change.defaultDepositAccount();
     await account.sendToMainchain(amount);
     const result = await change.notarize();
@@ -237,7 +282,8 @@ export default class AccountManager extends TypedEventEmitter<{
     fromAddress?: string;
     toAddress?: string;
   }): Promise<IArgonFileMeta> {
-    const localchain = (await this.getLocalchain(request.fromAddress)) ?? this.localchains[0];
+    const localchain =
+      (await this.getLocalchain(request.fromAddress)) ?? this.getDefaultLocalchain();
 
     const file = await localchain.transactions.send(
       request.milligons,
@@ -249,15 +295,16 @@ export default class AccountManager extends TypedEventEmitter<{
     return {
       rawJson: file,
       file: ArgonFileSchema.parse(argonFile),
-      name: `${ArgonUtils.format(request.milligons, 'milligons', 'argons')} ${recipient}.arg`,
+      name: `${ArgonUtils.format(request.milligons, 'milligons', 'argons')} ${recipient}.${ARGON_FILE_EXTENSION}`,
     };
   }
 
   public async createArgonsToRequestFile(request: {
     milligons: bigint;
-    sendToMyAddress?: String;
+    sendToMyAddress?: string;
   }): Promise<IArgonFileMeta> {
-    const localchain = (await this.getLocalchain(request.sendToMyAddress)) ?? this.localchains[0];
+    const localchain =
+      (await this.getLocalchain(request.sendToMyAddress)) ?? this.getDefaultLocalchain();
     const file = await localchain.transactions.request(request.milligons);
     const argonFile = JSON.parse(file);
 
@@ -270,7 +317,7 @@ export default class AccountManager extends TypedEventEmitter<{
 
   public async acceptArgonRequest(
     argonFile: IArgonFile,
-    fulfillFromAccount?: String,
+    fulfillFromAccount?: string,
   ): Promise<void> {
     if (!argonFile.request) {
       throw new Error('This Argon file is not a request');
@@ -293,10 +340,10 @@ export default class AccountManager extends TypedEventEmitter<{
         }
       }
     }
-    const localchain = (await this.getLocalchain(fromAddress)) ?? this.localchains[0];
+    const localchain = (await this.getLocalchain(fromAddress)) ?? this.getDefaultLocalchain();
     const argonFileJson = serdeJson(argonFile);
     await this.queue.run(async () => {
-      const importChange = localchain.beginChange();
+      const importChange = localchain.inner.beginChange();
       await importChange.acceptArgonFileRequest(argonFileJson);
       const result = await importChange.notarize();
       log.info('Argon request notarized', {
@@ -324,8 +371,9 @@ export default class AccountManager extends TypedEventEmitter<{
       .flat()
       .filter(Boolean);
 
-    let localchain = this.localchains[0];
+    let localchain = this.getDefaultLocalchain();
     for (const filter of filters) {
+      if (!filter) continue;
       const lookup = await this.getLocalchain(filter);
       if (lookup) {
         localchain = lookup;
@@ -335,7 +383,7 @@ export default class AccountManager extends TypedEventEmitter<{
 
     const argonFileJson = serdeJson(argonFile);
     await this.queue.run(async () => {
-      const importChange = localchain.beginChange();
+      const importChange = localchain.inner.beginChange();
       await importChange.importArgonFile(argonFileJson);
       const result = await importChange.notarize();
       log.info('Argon import notarized', {
@@ -345,8 +393,8 @@ export default class AccountManager extends TypedEventEmitter<{
   }
 
   private scheduleNextSync(): void {
-    const localchain = this.localchains[0];
-    if (!localchain) return null;
+    const localchain = this.getDefaultLocalchain();
+    if (!localchain) return;
     const nextTick = Number(localchain.ticker.millisToNextTick());
     this.nextTick = setTimeout(() => this.sync().catch(() => null), nextTick + 1);
   }
@@ -354,25 +402,38 @@ export default class AccountManager extends TypedEventEmitter<{
   private async sync(): Promise<void> {
     clearTimeout(this.nextTick);
     try {
-      const syncs = [];
-      for (const localchain of this.localchains) {
-        syncs.push(await this.queue.run(async () => localchain.balanceSync.sync()));
-      }
-      const result = syncs.reduce(
-        (x, next) => {
-          x.channelHoldNotarizations.push(...next.channelHoldNotarizations);
-          x.balanceChanges.push(...next.balanceChanges);
-          x.jumpAccountConsolidations.push(...next.jumpAccountConsolidations);
-          x.mainchainTransfers.push(...next.mainchainTransfers);
-          return x;
-        },
-        {
-          channelHoldNotarizations: [],
-          balanceChanges: [],
-          jumpAccountConsolidations: [],
-          mainchainTransfers: [],
-        } as BalanceSyncResult,
+      const syncs = await Promise.allSettled(
+        this.localchains.map(localchain =>
+          this.queue.run(async () => await localchain.balanceSync.sync()),
+        ),
       );
+      const result: BalanceSyncResult = {
+        channelHoldNotarizations: [],
+        balanceChanges: [],
+        jumpAccountConsolidations: [],
+        mainchainTransfers: [],
+        blockVotes: [],
+        channelHoldsUpdated: [],
+      };
+      for (let i = 0; i < syncs.length; i++) {
+        const sync = syncs[i];
+        const localchain = this.localchains[i];
+        if (sync.status === 'fulfilled') {
+          const next = sync.value;
+
+          result.channelHoldNotarizations.push(...next.channelHoldNotarizations);
+          result.balanceChanges.push(...next.balanceChanges);
+          result.jumpAccountConsolidations.push(...next.jumpAccountConsolidations);
+          result.mainchainTransfers.push(...next.mainchainTransfers);
+          result.channelHoldsUpdated.push(...next.channelHoldsUpdated);
+        }
+        if (sync.status === 'rejected') {
+          log.warn('Error synching account balance changes', {
+            error: sync.reason,
+            localchain: localchain.name,
+          } as any);
+        }
+      }
       if (result.mainchainTransfers.length || result.balanceChanges.length) {
         log.info('Account sync result', {
           ...(await gettersToObject(result)),

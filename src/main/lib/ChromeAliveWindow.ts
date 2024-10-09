@@ -5,6 +5,7 @@ import { IChromeAliveSessionApis } from '@ulixee/desktop-interfaces/apis';
 import IChromeAliveSessionEvents from '@ulixee/desktop-interfaces/events/IChromeAliveSessionEvents';
 import ISessionAppModeEvent from '@ulixee/desktop-interfaces/events/ISessionAppModeEvent';
 import HeroCore from '@ulixee/hero-core';
+import { data } from 'autoprefixer';
 import { app, BrowserWindow, MenuItem, screen, shell } from 'electron';
 import { nanoid } from 'nanoid';
 import * as Path from 'path';
@@ -33,7 +34,7 @@ export default class ChromeAliveWindow {
   } as const;
 
   window: BrowserWindow;
-  api: ApiClient<IChromeAliveSessionApis, IChromeAliveSessionEvents>;
+  api?: ApiClient<IChromeAliveSessionApis, IChromeAliveSessionEvents>;
   enableDevtoolsOnDevtools = process.env.DEVTOOLS ?? false;
 
   private get activeReplayTab(): IReplayTab {
@@ -46,7 +47,7 @@ export default class ChromeAliveWindow {
   #activeTabIdx = 0;
   #replayTabs: IReplayTab[] = [];
   #mainView: View;
-  #showingPopupName: string;
+  #showingPopupName?: string;
   #hasShown = false;
   #addTabQueue = new Queue('TAB CREATOR', 1);
 
@@ -99,14 +100,14 @@ export default class ChromeAliveWindow {
     });
     this.#mainView.attach();
     this.#mainView.hide();
-    this.#eventSubscriber.on(this.#mainView.browserView.webContents, 'focus', this.closeOpenPopup);
+    this.#eventSubscriber.on(this.#mainView.webContents!, 'focus', this.closeOpenPopup);
 
     this.#toolbarView = new View(this.window, {
       preload: `${__dirname}/preload/chromealive.js`,
     });
     this.#toolbarView.attach();
     // for child windows
-    this.#toolbarView.webContents.setWindowOpenHandler(details => {
+    this.#toolbarView.webContents!.setWindowOpenHandler(details => {
       const isMenu = details.frameName.includes('Menu');
       const canMoveAndResize = !isMenu || details.frameName.startsWith('MenuFinder');
 
@@ -132,14 +133,14 @@ export default class ChromeAliveWindow {
       };
     });
 
-    const toolbarWc = this.#toolbarView.webContents;
+    const toolbarWc = this.#toolbarView.webContents!;
     this.#eventSubscriber.on(toolbarWc, 'did-create-window', (childWindow, details) => {
       childWindow.moveAbove(this.window.getMediaSourceId());
       this.trackChildWindow(childWindow, details);
     });
 
     if (process.env.DEVTOOLS) {
-      this.#toolbarView.webContents.openDevTools({ mode: 'detach' });
+      toolbarWc.openDevTools({ mode: 'detach' });
     }
     this.#eventSubscriber.on(toolbarWc, 'ipc-message', (e, eventName, ...args) => {
       if (eventName === 'App:changeHeight') {
@@ -163,9 +164,10 @@ export default class ChromeAliveWindow {
   }
 
   async load(): Promise<void> {
-    await this.api.connect();
+    await this.api?.connect();
     await this.addReplayTab();
     await this.relayout();
+    if (!this.#toolbarView?.webContents) return;
     await loadUrl(this.#toolbarView.webContents, 'toolbar.html');
     await this.#toolbarView.webContents.executeJavaScript(`
         const elem = document.querySelector('body > #app');
@@ -181,7 +183,7 @@ export default class ChromeAliveWindow {
         resizeObserver.observe(elem);
       `);
 
-    await this.injectCloudAddress(this.#toolbarView.browserView);
+    if (this.#toolbarView.browserView) await this.injectCloudAddress(this.#toolbarView.browserView);
   }
 
   public async onClose(): Promise<void> {
@@ -189,12 +191,12 @@ export default class ChromeAliveWindow {
       if (win.webContents?.isDevToolsOpened()) win.webContents.closeDevTools();
       win.close();
     }
-    if (this.#toolbarView.webContents.isDevToolsOpened()) {
+    if (this.#toolbarView.webContents?.isDevToolsOpened()) {
       this.#toolbarView.webContents.closeDevTools();
     }
-    this.#toolbarView.webContents.close();
+    this.#toolbarView.webContents?.close();
     for (const tab of this.#replayTabs) {
-      tab.view.webContents.close();
+      tab.view.webContents?.close();
     }
     this.#childWindowsByName.clear();
     this.#eventSubscriber.close();
@@ -208,6 +210,7 @@ export default class ChromeAliveWindow {
       await this.api.disconnect();
     }
     this.createApi(address);
+    if (!this.api) return;
 
     await this.api.connect();
     for (const tab of this.#replayTabs) {
@@ -220,7 +223,7 @@ export default class ChromeAliveWindow {
         heroTabId: tab.heroTabId,
         isReconnect: true,
       });
-      const devtoolsWc = webContents.devToolsWebContents;
+      const devtoolsWc = webContents?.devToolsWebContents;
       if (devtoolsWc) {
         const { targetId, browserContextId } = await View.getTargetInfo(devtoolsWc);
 
@@ -231,10 +234,12 @@ export default class ChromeAliveWindow {
         });
       }
     }
-    await Promise.all([
-      this.injectCloudAddress(this.#toolbarView.browserView),
-      this.injectCloudAddress(this.#mainView.browserView),
-    ]);
+    if (this.#toolbarView.browserView && this.#mainView.browserView) {
+      await Promise.all([
+        this.injectCloudAddress(this.#toolbarView.browserView),
+        this.injectCloudAddress(this.#mainView.browserView),
+      ]);
+    }
   }
 
   // NOTE: 1 is the default hero tab id for an incognito context. DOES NOT WORK in default context
@@ -242,8 +247,9 @@ export default class ChromeAliveWindow {
     await this.#addTabQueue.run(async () => {
       if (this.#replayTabs.some(x => x.heroTabId === heroTabId)) return;
       const view = new View(this.window);
-      view.browserView.setAutoResize({ width: true, height: true });
+      view.browserView?.setAutoResize({ width: true, height: true });
       view.attach();
+      if (!view.webContents) throw new Error('No web contents on view');
 
       await view.webContents.session.loadExtension(extensionPath, {
         allowFileAccess: false,
@@ -254,9 +260,12 @@ export default class ChromeAliveWindow {
 
       if (this.enableDevtoolsOnDevtools) await this.addDevtoolsOnDevtools(view);
       this.#eventSubscriber.on(view.webContents, 'devtools-opened', async () => {
-        await view.webContents.executeJavaScript(`window.cloudAddress = '${this.api.address}'`);
+        const address = this.api?.address;
+        if (address) {
+          await view.webContents?.executeJavaScript(`window.cloudAddress = '${address}'`);
+        }
 
-        const devtoolsWc = view.webContents.devToolsWebContents;
+        const devtoolsWc = view.webContents?.devToolsWebContents;
         if (!devtoolsWc) {
           console.warn('No web contents on showing devtools');
           return;
@@ -285,16 +294,17 @@ export default class ChromeAliveWindow {
           })()`,
         );
         const target = await View.getTargetInfo(devtoolsWc);
-        await this.api.send('Session.devtoolsTargetOpened', target);
+        await this.api?.send('Session.devtoolsTargetOpened', target);
       });
       view.webContents.on('context-menu', (ev, params) => {
+        if (!view.webContents) return;
         const menu = generateContextMenu(params, view.webContents);
         menu.append(
           new MenuItem({
             label: 'Generate Selector',
             click: () => {
-              view.webContents.inspectElement(params.x, params.y);
-              void this.api.send('Session.openMode', {
+              view.webContents?.inspectElement(params.x, params.y);
+              void this.api?.send('Session.openMode', {
                 mode: 'Finder',
                 position: { x: params.x, y: params.y },
                 trigger: 'contextMenu',
@@ -311,7 +321,7 @@ export default class ChromeAliveWindow {
       const { targetId, browserContextId } = await View.getTargetInfo(view.webContents);
       const chromeTabId = view.webContents.id;
       this.#replayTabs.push({ view, targetId, heroTabId, browserContextId, chromeTabId });
-      await this.api.send('Session.replayTargetCreated', {
+      await this.api?.send('Session.replayTargetCreated', {
         targetId,
         browserContextId,
         heroTabId,
@@ -332,18 +342,20 @@ export default class ChromeAliveWindow {
   }
 
   private async injectCloudAddress(view: BrowserView): Promise<void> {
-    if (!this.api.address) return;
-    await view.webContents.executeJavaScript(
+    const address = this.api?.address;
+    if (!address) return;
+    await view.webContents?.executeJavaScript(
       `(() => {
-        window.cloudAddress = '${this.api.address}';
+        window.cloudAddress = '${address}';
         if ('setCloudAddress' in window) window.setCloudAddress(window.cloudAddress);
       })()`,
     );
   }
 
   private onApiClose(): void {
+    if (!this.api) return;
     this.#eventSubscriber.off({ emitter: this.api, eventName: 'close', handler: this.onApiClose });
-    this.api = null;
+    this.api = undefined;
   }
 
   private async addDevtoolsOnDevtools(view: View): Promise<void> {
@@ -354,12 +366,13 @@ export default class ChromeAliveWindow {
       allowFileAccess: true,
     });
     devtoolsOnDevtoolsWindow.show();
-    view.webContents.setDevToolsWebContents(devtoolsOnDevtoolsWindow.webContents);
+    view.webContents?.setDevToolsWebContents(devtoolsOnDevtoolsWindow.webContents);
     devtoolsOnDevtoolsWindow.webContents.openDevTools({ mode: 'undocked' });
   }
 
   private async activateView(mode: ISessionAppModeEvent['mode']): Promise<void> {
-    let needsLayout: boolean;
+    let needsLayout = false;
+
     if (mode === 'Live' || mode === 'Timetravel' || mode === 'Finder') {
       if (this.activeReplayTab) {
         needsLayout = this.activeReplayTab.view.isHidden;
@@ -374,16 +387,16 @@ export default class ChromeAliveWindow {
       this.#mainView.isHidden = false;
       const page = ChromeAliveWindow.pages[mode];
       if (page) {
-        if (!this.#mainView.webContents.getURL().includes(page)) {
-          await loadUrl(this.#mainView.webContents, page);
+        const webContents = this.#mainView.webContents;
+        if (webContents && !webContents.getURL().includes(page)) {
+          await loadUrl(webContents, page);
 
-          await this.injectCloudAddress(this.#mainView.browserView);
+          if (this.#mainView.browserView) await this.injectCloudAddress(this.#mainView.browserView);
 
           if (mode === 'Output') {
-            this.#mainView.webContents.openDevTools({ mode: 'bottom' });
-            const view = this.#mainView;
-            this.#eventSubscriber.on(view.webContents, 'devtools-opened', () => {
-              const devtoolsWc = view.webContents.devToolsWebContents;
+            webContents.openDevTools({ mode: 'bottom' });
+            this.#eventSubscriber.on(webContents, 'devtools-opened', () => {
+              const devtoolsWc = this.#mainView.webContents?.devToolsWebContents;
               void devtoolsWc
                 ?.executeJavaScript(
                   `(async () => {
@@ -419,10 +432,12 @@ export default class ChromeAliveWindow {
 
   private closeOpenPopup(): void {
     try {
-      this.#childWindowsByName.get(this.#showingPopupName)?.close();
-      this.#childWindowsByName.delete(this.#showingPopupName);
+      if (this.#showingPopupName) {
+        this.#childWindowsByName.get(this.#showingPopupName)?.close();
+        this.#childWindowsByName.delete(this.#showingPopupName);
+      }
     } catch {}
-    this.#showingPopupName = null;
+    this.#showingPopupName = undefined;
   }
 
   private onChromeAliveEvent<T extends keyof IChromeAliveSessionEvents>(
@@ -439,7 +454,7 @@ export default class ChromeAliveWindow {
       )})`;
       if (this.window.title !== title) {
         this.window.setTitle(title);
-        void this.#toolbarView.webContents.executeJavaScript(`document.title="${title}"`);
+        void this.#toolbarView.webContents?.executeJavaScript(`document.title="${title}"`);
       }
     }
 
@@ -449,7 +464,7 @@ export default class ChromeAliveWindow {
     }
 
     if (eventType === 'DevtoolsBackdoor.toggleInspectElementMode') {
-      this.activeReplayTab.view.webContents.focus();
+      this.activeReplayTab.view.webContents?.focus();
     }
 
     if (eventType === 'Session.tabCreated') {
@@ -498,7 +513,7 @@ export default class ChromeAliveWindow {
     let hasHandled = false;
     childWindow.once('close', async e => {
       this.#eventSubscriber.off(onshow, onIpcMessage);
-      if (this.#showingPopupName === frameName) this.#showingPopupName = null;
+      if (this.#showingPopupName === frameName) this.#showingPopupName = undefined;
       const popup = this.#childWindowsByName.get(frameName);
       this.#childWindowsByName.delete(frameName);
       if (!hasHandled && popup) {

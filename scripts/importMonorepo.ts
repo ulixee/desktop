@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 const dest = Path.join(__dirname, '..', 'packages');
 const pathToPlatform = resolve(__dirname, '../../platform');
 const pathToHero = resolve(__dirname, '../../hero');
+const pathToMainchain = resolve(__dirname, '../../mainchain');
 
 const dirsNotToInclude = new Set([
   'node_modules',
@@ -18,6 +19,8 @@ const dirsNotToInclude = new Set([
   'databroker-admin',
   'docs',
   'localchain/npm',
+  'localchain/apple',
+  'localchain/android',
   'double-agent',
   'browser-emulator-builder',
   'browser-profiler',
@@ -60,7 +63,7 @@ function copyDir(baseDir: string, outPath?: string): void {
     )
       continue;
 
-    const packageName = packageJson.name?.replace('@ulixee', '');
+    const packageName = packageJson.name?.replace('@ulixee', '').replace('@argonprotocol', '');
 
     const packageDir = packageName ? `${dest}/${packageName}` : outPath;
     if (Fs.statSync(dirPath).isDirectory()) {
@@ -89,16 +92,31 @@ if (!existsSync(pathToPlatform)) {
 }
 
 const buildDir = process.argv[2] ?? 'build';
-console.log('Importing Platform into Desktop, out=', buildDir);
+console.log('Importing Platform into Desktop, buildDir=', buildDir);
 if (!existsSync(Path.join(pathToPlatform, buildDir))) {
   throw new Error(`The build directory does not exist: ${buildDir}`);
 }
 const baseBuild = Path.join(pathToPlatform, buildDir);
 copyDir(baseBuild);
+
+if (existsSync(pathToMainchain)) {
+  console.log('Importing Mainchain into Desktop, buildDir=', buildDir);
+  const platformPackageJson = JSON.parse(Fs.readFileSync(`${pathToPlatform}/package.json`, 'utf8'));
+  const platformWorkspaces = Array.isArray(platformPackageJson.workspaces)
+    ? platformPackageJson.workspaces
+    : platformPackageJson.workspaces.packages;
+  console.log('platformWorkspaces=', platformWorkspaces);
+  if (platformWorkspaces?.length) {
+    if (platformWorkspaces.some(x => x.includes('localchain'))) {
+      console.log('Importing Localchain into Desktop, buildDir=', buildDir);
+      copyDir(`${pathToMainchain}/localchain`);
+    }
+  }
+}
+
 if (existsSync(Path.join(pathToHero, buildDir))) {
-  console.log('Importing Hero into Desktop, out=', buildDir);
+  console.log('Importing Hero into Desktop, buildDir=', buildDir);
   copyDir(Path.join(pathToHero, buildDir));
-  // copyDir(`${baseBuild}/../mainchain/localchain`);
   copyDir(`${pathToHero}/browser-emulator-builder/data`, `${dest}/default-browser-emulator/data`);
   Fs.writeFileSync(
     `${dest}/default-browser-emulator/paths.json`,

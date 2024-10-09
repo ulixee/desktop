@@ -11,7 +11,7 @@ export default class DeploymentWatcher extends TypedEventEmitter<{
 }> {
   public deployments: IDatastoreDeployLogEntry[] = [];
 
-  private deploymentFileWatch: Fs.FSWatcher;
+  private deploymentFileWatch?: Fs.FSWatcher;
 
   constructor() {
     super();

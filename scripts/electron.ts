@@ -83,7 +83,7 @@ export default function electron(...options: ElectronOptions[]): Plugin[] {
                   options.onstart.call(this, {
                     startup,
                     reload() {
-                      if (process.electronApp) {
+                      if (process['electronApp']) {
                         (server.hot || server.ws).send({ type: 'full-reload' });
                       } else {
                         startup();
@@ -146,10 +146,10 @@ export async function startup(argv = ['.', '--no-sandbox'], options?: SpawnOptio
   await startup.exit();
 
   // Start Electron.app
-  process.electronApp = spawn(electronPath, argv, { stdio: 'inherit', ...options });
+  process['electronApp'] = spawn(electronPath, argv, { stdio: 'inherit', ...options });
 
   // Exit command after Electron.app exits
-  process.electronApp.once('exit', process.exit);
+  process['electronApp'].once('exit', process.exit);
 
   if (!startup.hookedProcessExit) {
     startup.hookedProcessExit = true;
@@ -158,8 +158,8 @@ export async function startup(argv = ['.', '--no-sandbox'], options?: SpawnOptio
 }
 startup.hookedProcessExit = false;
 startup.exit = async () => {
-  if (process.electronApp) {
-    process.electronApp.removeAllListeners();
-    treeKillSync(process.electronApp.pid!);
+  if (process['electronApp']) {
+    process['electronApp'].removeAllListeners();
+    treeKillSync(process['electronApp'].pid!);
   }
 };

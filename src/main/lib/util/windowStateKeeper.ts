@@ -5,8 +5,8 @@ import EventSubscriber from '@ulixee/commons/lib/EventSubscriber';
 
 export default class WindowStateKeeper {
   public windowState: Rectangle & { isMaximized?: boolean } = {
-    x: undefined,
-    y: undefined,
+    x: 0,
+    y: 0,
     width: 1400,
     height: 800,
     isMaximized: false,

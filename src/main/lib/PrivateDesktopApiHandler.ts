@@ -1,3 +1,4 @@
+import { ARGON_FILE_VERSION, LocalchainOverview } from '@argonprotocol/localchain';
 import { getDataDirectory } from '@ulixee/commons/lib/dirUtils';
 import EventSubscriber from '@ulixee/commons/lib/EventSubscriber';
 import { TypedEventEmitter } from '@ulixee/commons/lib/eventUtils';
@@ -5,9 +6,11 @@ import Resolvable from '@ulixee/commons/lib/Resolvable';
 import IDatastoreDeployLogEntry from '@ulixee/datastore-core/interfaces/IDatastoreDeployLogEntry';
 import DatastoreManifest from '@ulixee/datastore-core/lib/DatastoreManifest';
 import type ILocalUserProfile from '@ulixee/datastore/interfaces/ILocalUserProfile';
+import { IDatabrokerAuthAccount } from '@ulixee/datastore/interfaces/ILocalUserProfile';
 import { IDatabrokerAccount, IWallet } from '@ulixee/datastore/interfaces/IPaymentService';
 import IQueryLogEntry from '@ulixee/datastore/interfaces/IQueryLogEntry';
 import DatastoreApiClient from '@ulixee/datastore/lib/DatastoreApiClient';
+import CreditReserver from '@ulixee/datastore/payments/CreditReserver';
 import {
   IArgonFileMeta,
   IDatastoreResultItem,
@@ -16,10 +19,12 @@ import {
 } from '@ulixee/desktop-interfaces/apis';
 import { ICloudConnected } from '@ulixee/desktop-interfaces/apis/IDesktopApis';
 import IDesktopAppPrivateEvents from '@ulixee/desktop-interfaces/events/IDesktopAppPrivateEvents';
-import { ARGON_FILE_VERSION, LocalchainOverview } from '@argonprotocol/localchain';
 import { ConnectionToClient, WsTransportToClient } from '@ulixee/net';
 import IConnectionToClient from '@ulixee/net/interfaces/IConnectionToClient';
-import IArgonFile, { ArgonFileSchema } from '@ulixee/platform-specification/types/IArgonFile';
+import IArgonFile, {
+  ARGON_FILE_EXTENSION,
+  ArgonFileSchema,
+} from '@ulixee/platform-specification/types/IArgonFile';
 import ArgonUtils from '@ulixee/platform-utils/lib/ArgonUtils';
 import Identity from '@ulixee/platform-utils/lib/Identity';
 import { app, dialog, Menu, WebContents } from 'electron';
@@ -27,10 +32,11 @@ import { IncomingMessage } from 'http';
 import { nanoid } from 'nanoid';
 import * as Os from 'os';
 import * as Path from 'path';
+import { types } from 'sass-embedded';
 import WebSocket from 'ws';
-import CreditReserver from '@ulixee/datastore/payments/CreditReserver';
 import ApiManager from './ApiManager';
 import ArgonFile from './ArgonFile';
+import Error = types.Error;
 
 const argIconPath = Path.resolve(app.getAppPath(), 'resources', 'arg.png');
 
@@ -74,9 +80,9 @@ export default class PrivateDesktopApiHandler extends TypedEventEmitter<{
     'User.addBrokerAccount': this.addBrokerAccount.bind(this),
   } as const;
 
-  public Events: IDesktopAppPrivateEvents;
+  public Events!: IDesktopAppPrivateEvents;
 
-  private connectionToClient: IConnectionToClient<this['Apis'], this['Events']>;
+  private connectionToClient?: IConnectionToClient<this['Apis'], this['Events']>;
   private waitForConnection = new Resolvable<void>();
   private events = new EventSubscriber();
 
@@ -126,13 +132,21 @@ export default class PrivateDesktopApiHandler extends TypedEventEmitter<{
 
   public async onArgonFileDrop(path: string): Promise<void> {
     const argonFile = await ArgonFile.readFromPath(path);
+    if (!argonFile) {
+      throw new Error("Sorry, we couldn't read the Argon file you've just dropped.");
+    }
     await this.onArgonFileOpened(argonFile);
   }
 
   public async addBrokerAccount(
-    request: Omit<IDatabrokerAccount, 'balance'>,
+    request: Omit<IDatabrokerAuthAccount, 'userIdentity'>,
   ): Promise<IDatabrokerAccount> {
-    return await this.apiManager.accountManager.addBrokerAccount(request);
+    if (request.pemPath?.startsWith('~')) {
+      request.pemPath = Path.join(Os.homedir(), request.pemPath.slice(1));
+    }
+    const account = await this.apiManager.accountManager.addBrokerAccount(request);
+    await this.apiManager.setDatabroker(request);
+    return account;
   }
 
   public async createAccount(request: {
@@ -157,7 +171,7 @@ export default class PrivateDesktopApiHandler extends TypedEventEmitter<{
 
   public async transferArgonsFromMainchain(request: {
     milligons: bigint;
-    address?: string;
+    address: string;
   }): Promise<void> {
     await this.apiManager.accountManager.transferMainchainToLocal(
       request.address,
@@ -167,7 +181,7 @@ export default class PrivateDesktopApiHandler extends TypedEventEmitter<{
 
   public async transferArgonsToMainchain(request: {
     milligons: bigint;
-    address?: string;
+    address: string;
   }): Promise<void> {
     return this.apiManager.accountManager.transferLocalToMainchain(
       request.address,
@@ -221,7 +235,10 @@ export default class PrivateDesktopApiHandler extends TypedEventEmitter<{
     const client = this.apiManager.getDatastoreClient(cloudHost);
     const queryId = nanoid(12);
     const date = new Date();
-    void client.query(id, version, query, { queryId });
+    const paymentService =
+      this.apiManager.databrokerPaymentService ?? this.apiManager.paymentService;
+
+    void client.query(id, version, query, { queryId, paymentService });
     return Promise.resolve({
       date,
       query,
@@ -285,11 +302,13 @@ export default class PrivateDesktopApiHandler extends TypedEventEmitter<{
   }
 
   public async saveCredit(arg: { credit: TCredit }): Promise<void> {
+    if (!arg.credit) return;
     const credit = await CreditReserver.storeCreditFromUrl(
       arg.credit.datastoreUrl,
       arg.credit.microgons,
       await this.apiManager.accountManager.getDatastoreHostLookup(),
     );
+    if (!this.apiManager.paymentService) throw new Error('No payment service available.');
     this.apiManager.paymentService.addCredit(credit);
   }
 
@@ -299,7 +318,7 @@ export default class PrivateDesktopApiHandler extends TypedEventEmitter<{
     argons: number;
   }): Promise<IArgonFileMeta> {
     const { argons, datastore } = args;
-    const address = new URL(this.apiManager.getCloudAddressByName(args.cloud));
+    const address = new URL(this.apiManager.getCloudAddressByName(args.cloud) ?? '');
     const adminIdentity = this.apiManager.localUserProfile.getAdminIdentity(
       datastore.id,
       args.cloud,
@@ -331,7 +350,7 @@ export default class PrivateDesktopApiHandler extends TypedEventEmitter<{
         name: `₳${argons} at ${
           (datastore.name ?? datastore.scriptEntrypoint)?.replace(/[.\\/]/g, '-') ??
           'a Ulixee Datastore'
-        }.arg`,
+        }.${ARGON_FILE_EXTENSION}`,
       };
     } finally {
       await client.disconnect();
@@ -382,10 +401,10 @@ export default class PrivateDesktopApiHandler extends TypedEventEmitter<{
 
   public async onArgonFileOpened(file: IArgonFile): Promise<void> {
     await this.waitForConnection;
-    await this.connectionToClient.sendEvent({ eventType: 'Argon.opened', data: file });
+    this.connectionToClient?.sendEvent({ eventType: 'Argon.opened', data: file });
   }
 
-  public async findAdminIdentity(datastoreId: string): Promise<string> {
+  public async findAdminIdentity(datastoreId: string): Promise<string | null> {
     const result = await dialog.showOpenDialog({
       properties: ['openFile', 'showHiddenFiles'],
       message: 'Select your Admin Identity for this Datastore to enable administrative features.',
@@ -399,7 +418,7 @@ export default class PrivateDesktopApiHandler extends TypedEventEmitter<{
     return null;
   }
 
-  public async findCloudAdminIdentity(cloudName: string): Promise<string> {
+  public async findCloudAdminIdentity(cloudName: string): Promise<string | null> {
     const result = await dialog.showOpenDialog({
       properties: ['openFile', 'showHiddenFiles'],
       message: 'Select your Admin Identity for this Cloud to enable administrative features.',
@@ -422,7 +441,7 @@ export default class PrivateDesktopApiHandler extends TypedEventEmitter<{
     const datastoresById: Record<string, string> = {};
     for (const { datastoreId, adminIdentity } of this.apiManager.localUserProfile
       .datastoreAdminIdentities) {
-      datastoresById[datastoreId] = adminIdentity;
+      if (adminIdentity) datastoresById[datastoreId] = adminIdentity;
     }
     const cloudsByName: Record<string, string> = {};
     for (const cloud of this.apiManager.apiByCloudAddress.values()) {
@@ -434,19 +453,19 @@ export default class PrivateDesktopApiHandler extends TypedEventEmitter<{
   }
 
   public async onDeployment(event: IDatastoreDeployLogEntry): Promise<void> {
-    await this.connectionToClient?.sendEvent({ eventType: 'Datastore.onDeployed', data: event });
+    this.connectionToClient?.sendEvent({ eventType: 'Datastore.onDeployed', data: event });
   }
 
   public async onQuery(event: IQueryLogEntry): Promise<void> {
-    await this.connectionToClient?.sendEvent({ eventType: 'User.onQuery', data: event });
+    this.connectionToClient?.sendEvent({ eventType: 'User.onQuery', data: event });
   }
 
   public async onNewCloudAddress(event: ICloudConnected): Promise<void> {
-    await this.connectionToClient?.sendEvent({ eventType: 'Cloud.onConnected', data: event });
+    this.connectionToClient?.sendEvent({ eventType: 'Cloud.onConnected', data: event });
   }
 
   public async onWalletUpdated(event: { wallet: IWallet }): Promise<void> {
-    await this.connectionToClient?.sendEvent({ eventType: 'Wallet.updated', data: event });
+    this.connectionToClient?.sendEvent({ eventType: 'Wallet.updated', data: event });
   }
 
   public openReplay(arg: IOpenReplay): void {
@@ -479,7 +498,7 @@ export default class PrivateDesktopApiHandler extends TypedEventEmitter<{
       return;
     }
     const adminIdentity = adminIdentityPath
-      ? Identity.loadFromFile(arg.adminIdentityPath).bech32
+      ? Identity.loadFromFile(adminIdentityPath).bech32
       : undefined;
     await this.apiManager.connectToCloud({
       address,
@@ -490,7 +509,7 @@ export default class PrivateDesktopApiHandler extends TypedEventEmitter<{
 
     const profile = this.apiManager.localUserProfile;
     if (!profile.clouds.find(x => x.address === address)) {
-      profile.clouds.push({ address, name, adminIdentityPath: arg.adminIdentityPath });
+      profile.clouds.push({ address, name, adminIdentityPath });
       await profile.save();
     }
   }

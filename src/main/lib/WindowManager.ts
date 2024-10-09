@@ -58,7 +58,7 @@ export class WindowManager {
     dbPath: string;
   }): Promise<void> {
     if (this.#chromeAliveWindowsBySessionId.has(data.heroSessionId)) {
-      this.#chromeAliveWindowsBySessionId.get(data.heroSessionId).window.focus();
+      this.#chromeAliveWindowsBySessionId.get(data.heroSessionId)?.window.focus();
       return;
     }
     await app.dock?.show();
@@ -99,7 +99,7 @@ export class WindowManager {
       const [filename] = result.filePaths;
       if (filename.endsWith('.db')) {
         return this.loadChromeAliveWindow({
-          cloudAddress: this.apiManager.localCloudAddress,
+          cloudAddress: this.apiManager.localCloudAddress!,
           dbPath: filename,
           heroSessionId: Path.basename(filename).replace('.db', ''),
         });
@@ -138,7 +138,7 @@ export class WindowManager {
     if (!oldAddress) return;
 
     for (const window of this.chromeAliveWindows) {
-      if (window.api.address.startsWith(oldAddress)) {
+      if (window.api?.address.startsWith(oldAddress)) {
         await window.reconnect(address);
       }
     }

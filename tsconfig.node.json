@@ -3,14 +3,15 @@
   "include": ["electron.vite.config.*", "electron-builder.ts", "src/main/**/*", "src/preload/**/*"],
   "compilerOptions": {
     "composite": true,
-    "strict": false,
+    "strict": true,
     "noImplicitReturns": false,
     "noUnusedParameters": false,
     "esModuleInterop": true,
     "target": "ES2022",
     "module": "commonjs",
     "noUnusedLocals": false,
+    "useUnknownInCatchVariables": false,
     "allowSyntheticDefaultImports": true,
-    "sourceMap": true,
+    "sourceMap": true
   }
 }

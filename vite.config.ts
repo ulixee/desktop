@@ -1,6 +1,5 @@
 import vue from '@vitejs/plugin-vue';
 import { existsSync, rmSync } from 'node:fs';
-import * as path from 'node:path';
 import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 import prismjs from 'vite-plugin-prismjs';
@@ -22,6 +21,13 @@ export default defineConfig({
       {
         entry: resolve('src/main/index.ts'),
         vite: {
+          css: {
+            preprocessorOptions: {
+              scss: {
+                api: 'modern',
+              },
+            },
+          },
           build: {
             outDir: resolve('main'),
             sourcemap: true,
@@ -65,6 +71,13 @@ export default defineConfig({
           menubar: resolve('src/preload/MenubarPagePreload.ts'),
         },
         vite: {
+          css: {
+            preprocessorOptions: {
+              scss: {
+                api: 'modern',
+              },
+            },
+          },
           build: {
             outDir: resolve('main/preload'),
           },
@@ -78,6 +91,13 @@ export default defineConfig({
         },
         skipSettingsWrapper: true,
         vite: {
+          css: {
+            preprocessorOptions: {
+              scss: {
+                api: 'modern',
+              },
+            },
+          },
           configFile: false,
           publicDir: 'public',
           root: resolve('src/chrome-extension'),
@@ -110,6 +130,13 @@ export default defineConfig({
         },
         skipSettingsWrapper: true,
         vite: {
+          css: {
+            preprocessorOptions: {
+              scss: {
+                api: 'modern',
+              },
+            },
+          },
           configFile: false,
           publicDir: false,
           root: resolve('src/ui'),
@@ -140,6 +167,7 @@ export default defineConfig({
                 resolve('src/ui/extension/hero-script.html'),
                 resolve('src/ui/extension/state-generator.html'),
               ],
+              external: [/@argonprotocol\/localchain.*/],
             },
             sourcemap: process.env.NODE_ENV === 'production',
             target: 'chrome128',

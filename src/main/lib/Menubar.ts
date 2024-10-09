@@ -1,32 +1,33 @@
-import { app, BrowserWindow, Event, shell, systemPreferences, Tray } from 'electron';
+import { app, BrowserWindow, Event, shell, Tray } from 'electron';
 import log from 'electron-log';
 import { autoUpdater, ProgressInfo, UpdateInfo } from 'electron-updater';
 import { EventEmitter } from 'events';
 import * as Path from 'path';
+import { version } from '..';
 import IMenubarOptions from '../interfaces/IMenubarOptions';
+import { ARGON_FILE_EXTENSION } from '@ulixee/platform-specification/types/IArgonFile';
 import ApiManager from './ApiManager';
 import installDefaultChrome from './util/installDefaultChrome';
+import loadUrl from './util/loadUrl';
 import trayPositioner from './util/trayPositioner';
 import { WindowManager } from './WindowManager';
-import { version } from '..';
-import loadUrl from './util/loadUrl';
 
 const iconPath = Path.resolve(app.getAppPath(), 'resources', 'IconTemplate.png');
 
 export class Menubar extends EventEmitter {
   #tray?: Tray;
   #menuWindow?: BrowserWindow;
-  #blurTimeout: NodeJS.Timeout | null = null; // track blur events with timeout
-  #windowManager: WindowManager;
+  #blurTimeout: NodeJS.Timeout | undefined; // track blur events with timeout
+  #windowManager?: WindowManager;
   #isClosing = false;
-  #updateInfoPromise: Promise<UpdateInfo>;
+  #updateInfoPromise?: Promise<UpdateInfo | null>;
   #installUpdateOnExit = false;
   #downloadProgress = 0;
-  #apiManager: ApiManager;
+  #apiManager?: ApiManager;
 
-  #argonFileOpen: string;
+  #argonFileOpen?: string;
   #options: IMenubarOptions;
-  #trayMouseover: boolean;
+  #trayMouseover?: boolean;
 
   constructor(options: IMenubarOptions) {
     super();
@@ -57,7 +58,7 @@ export class Menubar extends EventEmitter {
   private bindSignals(): void {
     let didRun = false;
     const exit = (): Promise<void> => {
-      if (didRun) return;
+      if (didRun) return Promise.resolve();
       didRun = true;
       return this.appExit();
     };
@@ -71,7 +72,7 @@ export class Menubar extends EventEmitter {
   private hideMenu(): void {
     if (this.#blurTimeout) {
       clearTimeout(this.#blurTimeout);
-      this.#blurTimeout = null;
+      this.#blurTimeout = undefined;
     }
     try {
       if (!this.#menuWindow?.isDestroyed()) {
@@ -83,14 +84,14 @@ export class Menubar extends EventEmitter {
   }
 
   private onSecondInstance(_, argv: string[]): void {
-    const argonFile = argv.find(x => x.endsWith('.arg'));
+    const argonFile = argv.find(x => x.endsWith(`.${ARGON_FILE_EXTENSION}`));
     if (argonFile) {
       this.handleArgonFile(argonFile);
     }
   }
 
   private handleArgonFile(path: string): void {
-    if (!path.endsWith('.arg')) return;
+    if (!path.endsWith(`.${ARGON_FILE_EXTENSION}`)) return;
 
     if (this.#apiManager) {
       void this.#apiManager.onArgonFileOpened(path);
@@ -100,7 +101,7 @@ export class Menubar extends EventEmitter {
   }
 
   private onFileOpened(e: Event, path: string): void {
-    if (!path.endsWith('.arg')) return;
+    if (!path.endsWith(`.${ARGON_FILE_EXTENSION}`)) return;
 
     e.preventDefault();
     this.handleArgonFile(path);
@@ -120,8 +121,9 @@ export class Menubar extends EventEmitter {
       throw new Error('Window has been initialized just above. qed.');
     }
 
-    trayPositioner.alignTrayMenu(this.#menuWindow, trayPos);
+    if (trayPos) trayPositioner.alignTrayMenu(this.#menuWindow, trayPos);
     this.#menuWindow.show();
+    this.#menuWindow.focus();
     this.#menuWindow.on('blur', this.checkHideMenu.bind(this));
   }
 
@@ -154,7 +156,7 @@ export class Menubar extends EventEmitter {
       this.bindSignals();
       if (this.#argonFileOpen) {
         await this.#apiManager.onArgonFileOpened(this.#argonFileOpen);
-        this.#argonFileOpen = null;
+        this.#argonFileOpen = undefined;
       }
       await this.updateLocalCloudStatus();
 
@@ -163,14 +165,14 @@ export class Menubar extends EventEmitter {
       this.#tray = new Tray(iconPath);
 
       app.on('activate', () => {
-        if (!this.#windowManager.desktopWindow.isOpen) {
-          this.#windowManager.desktopWindow.focus();
+        if (!this.#windowManager?.desktopWindow.isOpen) {
+          this.#windowManager!.desktopWindow.focus();
         }
       });
 
       this.#tray.on('click', this.clicked.bind(this));
-      this.#tray.on('mouse-leave', this.enterTray.bind(this));
-      this.#tray.on('mouse-enter', this.leaveTray.bind(this));
+      this.#tray.on('mouse-leave', this.leaveTray.bind(this));
+      this.#tray.on('mouse-enter', this.enterTray.bind(this));
       this.#tray.on('right-click', this.rightClicked.bind(this));
       this.#tray.on('drop-files', this.onDropFiles.bind(this));
       this.#tray.setToolTip(this.#options.tooltip || '');
@@ -244,7 +246,7 @@ export class Menubar extends EventEmitter {
     if (autoUpdater.isUpdaterActive()) return;
     try {
       log.verbose('Checking for version update');
-      this.#updateInfoPromise = autoUpdater.checkForUpdates().then(x => x.updateInfo);
+      this.#updateInfoPromise = autoUpdater.checkForUpdates().then(x => x?.updateInfo ?? null);
       await this.#updateInfoPromise;
     } catch (error) {
       log.error('ERROR checking for new version', error);
@@ -259,7 +261,7 @@ export class Menubar extends EventEmitter {
     this.#installUpdateOnExit = true;
     await this.sendToFrontend('Version.installing', {});
     if (this.#downloadProgress < 100) await autoUpdater.downloadUpdate();
-    await autoUpdater.quitAndInstall(false, true);
+    autoUpdater.quitAndInstall(false, true);
   }
 
   private async clicked(): Promise<void> {
@@ -267,7 +269,7 @@ export class Menubar extends EventEmitter {
       this.hideMenu();
     }
 
-    await this.#windowManager.openDesktop();
+    await this.#windowManager?.openDesktop();
     await this.checkForUpdates();
   }
 
@@ -282,7 +284,7 @@ export class Menubar extends EventEmitter {
     // if blur was invoked clear timeout
     if (this.#blurTimeout) {
       clearInterval(this.#blurTimeout);
-      this.#blurTimeout = null;
+      this.#blurTimeout = undefined;
     }
 
     if (this.#menuWindow?.isVisible()) {
@@ -295,7 +297,7 @@ export class Menubar extends EventEmitter {
 
   private onDropFiles(_, files: string[]): void {
     for (const file of files) {
-      if (file.endsWith('.arg')) this.handleArgonFile(file);
+      if (file.endsWith(ARGON_FILE_EXTENSION)) this.handleArgonFile(file);
     }
   }
 
@@ -342,7 +344,7 @@ export class Menubar extends EventEmitter {
     });
     this.#menuWindow.on('focus', () => {
       clearTimeout(this.#blurTimeout);
-      this.#blurTimeout = null;
+      this.#blurTimeout = undefined;
     });
 
     this.#menuWindow.setVisibleOnAllWorkspaces(true);
@@ -364,15 +366,17 @@ export class Menubar extends EventEmitter {
         }
 
         if (api === 'App.openDataDirectory') {
-          await shell.openPath(this.#apiManager.localCloud.datastoreCore.options.datastoresDir);
+          if (this.#apiManager?.localCloud) {
+            await shell.openPath(this.#apiManager.localCloud.datastoreCore.options.datastoresDir);
+          }
         }
 
         if (api === 'App.openHeroSession') {
-          await this.#windowManager.pickHeroSession();
+          await this.#windowManager?.pickHeroSession();
         }
 
         if (api === 'App.openDesktop') {
-          await this.#windowManager.openDesktop();
+          await this.#windowManager?.openDesktop();
         }
 
         if (api === 'Cloud.stop' || api === 'Cloud.restart') {
@@ -401,7 +405,7 @@ export class Menubar extends EventEmitter {
     if (process.env.OPEN_DEVTOOLS) {
       this.#menuWindow.webContents.openDevTools({ mode: 'detach' });
     }
-    if (this.#apiManager.localCloud) {
+    if (this.#apiManager?.localCloud) {
       await this.updateLocalCloudStatus();
     }
   }
@@ -413,7 +417,7 @@ export class Menubar extends EventEmitter {
   /// //// CLOUD MANAGEMENT ////////////////////////////////////////////////////////////////////////////////////////////
 
   private async stopCloud(): Promise<void> {
-    if (!this.#apiManager?.localCloud) return;
+    if (!this.#apiManager || !this.#apiManager?.localCloud) return;
 
     // eslint-disable-next-line no-console
     console.log(`CLOSING ULIXEE CLOUD`);
@@ -422,16 +426,17 @@ export class Menubar extends EventEmitter {
   }
 
   private async startCloud(): Promise<void> {
+    if (!this.#apiManager) return;
     await this.#apiManager.startLocalCloud();
 
     // eslint-disable-next-line no-console
-    console.log(`STARTED ULIXEE CLOUD at ${await this.#apiManager.localCloud.address}`);
+    console.log(`STARTED ULIXEE CLOUD at ${await this.#apiManager.localCloud!.address}`);
     await this.updateLocalCloudStatus();
   }
 
   private async updateLocalCloudStatus(): Promise<void> {
-    if (this.#isClosing) return;
-    let address: string = null;
+    if (this.#isClosing || !this.#apiManager) return;
+    let address: string | undefined;
     if (this.#apiManager.localCloud) {
       address = await this.#apiManager.localCloud.address;
     }

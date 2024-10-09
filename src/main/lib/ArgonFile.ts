@@ -10,7 +10,7 @@ export default {
     await Fs.promises.writeFile(file, json);
   },
 
-  async readFromPath(path: string): Promise<IArgonFile> {
+  async readFromPath(path: string): Promise<IArgonFile | null> {
     const data = await readFileAsJson<IArgonFile>(path).catch(() => null);
     if (data) {
       const result = ArgonFileSchema.safeParse(data);
@@ -20,7 +20,8 @@ export default {
           result.error,
         );
       }
-      return data;
+      return result.data;
     }
+    return null;
   },
 };

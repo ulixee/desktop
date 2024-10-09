@@ -13,6 +13,7 @@ import LocalUserProfile from '@ulixee/datastore/lib/LocalUserProfile';
 import QueryLog from '@ulixee/datastore/lib/QueryLog';
 import DefaultPaymentService from '@ulixee/datastore/payments/DefaultPaymentService';
 import { IDesktopAppApis } from '@ulixee/desktop-interfaces/apis';
+import { IDatabrokerAuthAccount } from '@ulixee/datastore/interfaces/ILocalUserProfile';
 import { ICloudConnected } from '@ulixee/desktop-interfaces/apis/IDesktopApis';
 import IDesktopAppEvents from '@ulixee/desktop-interfaces/events/IDesktopAppEvents';
 import ArgonUtils from '@ulixee/platform-utils/lib/ArgonUtils';
@@ -22,6 +23,7 @@ import { AddressInfo } from 'net';
 import * as Path from 'path';
 import { ClientOptions } from 'ws';
 import WebSocket from 'ws';
+import ArgonPaymentProcessor from '@ulixee/datastore-core/lib/ArgonPaymentProcessor';
 import AccountManager from './AccountManager';
 import ApiClient from './ApiClient';
 import ArgonFile, { IArgonFile } from './ArgonFile';
@@ -56,20 +58,20 @@ export default class ApiManager<
     }
   >();
 
-  localCloud: CloudNode;
+  localCloud?: CloudNode;
   exited = false;
   events = new EventSubscriber();
-  localCloudAddress: string;
-  debuggerUrl: string;
+  localCloudAddress?: string;
+  debuggerUrl?: string;
   localUserProfile: LocalUserProfile;
   deploymentWatcher: DeploymentWatcher;
-  paymentService: DefaultPaymentService;
+  paymentService?: DefaultPaymentService;
+  databrokerPaymentService?: DefaultPaymentService;
   accountManager: AccountManager;
   queryLogWatcher: QueryLog;
   privateDesktopApiHandler: PrivateDesktopApiHandler;
-  privateDesktopWsServer: WebSocket.Server;
-  privateDesktopWsServerAddress: string;
-
+  privateDesktopWsServer?: WebSocket.Server;
+  privateDesktopWsServerAddress?: string;
   datastoreApiClients = new DatastoreApiClients();
   private reconnectsByAddress: { [address: string]: NodeJS.Timeout } = {};
 
@@ -96,8 +98,6 @@ export default class ApiManager<
         resolve(`ws://127.0.0.1:${address.port}`);
       });
     });
-
-    this.paymentService = new DefaultPaymentService();
     await this.accountManager.start();
     this.events.on(this.accountManager, 'update', ev =>
       this.emit('wallet-updated', { wallet: ev.wallet }),
@@ -108,9 +108,25 @@ export default class ApiManager<
     }
     this.deploymentWatcher.start();
     this.queryLogWatcher.monitor(x => this.emit('query', x));
+
+    if (this.localUserProfile.databrokers.length) {
+      await this.setDatabroker(this.localUserProfile.databrokers[0]);
+    }
+
+    if (this.accountManager.localchains.length) {
+      const localchain = this.accountManager.localchainForQuery;
+      if (localchain) await this.setLocalchainForPayment(localchain.name);
+    } else {
+      this.paymentService = new DefaultPaymentService();
+    }
+
+    // start before registering change handlers
     await this.startLocalCloud();
+
     this.events.on(UlixeeHostsConfig.global, 'change', this.onNewLocalCloudAddress.bind(this));
     this.events.on(this.deploymentWatcher, 'new', x => this.emit('deployment', x));
+
+    // don't connect before we have a cloud started
     for (const cloud of this.localUserProfile.clouds) {
       await this.connectToCloud({
         ...cloud,
@@ -120,7 +136,36 @@ export default class ApiManager<
     }
   }
 
+  public async setLocalchainForPayment(name: string): Promise<void> {
+    const localchain = this.accountManager.localchains.find(x => x.name === name);
+    if (!localchain) throw new Error(`Localchain ${name} not found`);
+    this.paymentService = await DefaultPaymentService.fromOpenLocalchain(
+      localchain,
+      {
+        queries: 10,
+        type: 'multiplier',
+      },
+      this.datastoreApiClients,
+    );
+  }
+
+  public async setDatabroker(broker: Omit<IDatabrokerAuthAccount, 'userIdentity'>): Promise<void> {
+    this.databrokerPaymentService = await DefaultPaymentService.fromBroker(
+      broker.host,
+      {
+        pemPath: broker.pemPath,
+        passphrase: broker.pemPassword,
+      },
+      {
+        queries: 10,
+        type: 'multiplier',
+      },
+      this.datastoreApiClients,
+    );
+  }
+
   public async getWallet(): Promise<IWallet> {
+    if (!this.paymentService) throw new Error("Payment service isn't initialized");
     const localchainWallet = await this.accountManager.getWallet();
     const credits = await this.paymentService.credits();
     const creditBalance = credits.reduce((sum, x) => sum + x.remaining, 0);
@@ -140,9 +185,8 @@ export default class ApiManager<
     );
 
     return {
+      ...localchainWallet,
       credits,
-      accounts: localchainWallet.accounts,
-      brokerAccounts: localchainWallet.brokerAccounts,
       formattedBalance,
     };
   }
@@ -176,7 +220,7 @@ export default class ApiManager<
       version,
       localCloudAddress,
     );
-    let adminIdentity: string;
+    let adminIdentity: string | undefined;
     if (!localCloudAddress) {
       adminIdentity = this.localUserProfile.defaultAdminIdentity.bech32;
       this.localCloud ??= new CloudNode({
@@ -187,6 +231,11 @@ export default class ApiManager<
         },
       });
       await this.localCloud.datastoreCore.copyDbxToStartDir(bundledDatastoreExample);
+
+      this.localCloud.datastoreCore.argonPaymentProcessor = new ArgonPaymentProcessor(
+        this.localCloud.datastoreCore.datastoresDir,
+        this.accountManager.localchainForCloudNode!,
+      );
       await this.localCloud.listen();
       localCloudAddress = await this.localCloud.address;
     }
@@ -199,7 +248,7 @@ export default class ApiManager<
     return this.datastoreApiClients[cloudHost];
   }
 
-  public getCloudAddressByName(name: string): string {
+  public getCloudAddressByName(name: string): string | undefined {
     for (const [address, entry] of this.apiByCloudAddress) {
       if (entry.name === name) return address;
     }
@@ -212,7 +261,7 @@ export default class ApiManager<
     name ??= type;
     address = this.formatCloudAddress(address);
     if (this.apiByCloudAddress.has(address)) {
-      await this.apiByCloudAddress.get(address).resolvable.promise;
+      await this.apiByCloudAddress.get(address)?.resolvable.promise;
       return;
     }
     try {
@@ -226,7 +275,7 @@ export default class ApiManager<
 
       const api = new ApiClient<IDesktopAppApis, IDesktopAppEvents>(
         `${address}?type=app`,
-        this.onDesktopEvent.bind(this, address),
+        this.onDesktopEvent.bind(this, address) as any,
       );
       await api.connect();
       const onApiClosed = this.events.once(api, 'close', this.onApiClosed.bind(this, cloud));
@@ -242,15 +291,12 @@ export default class ApiManager<
         },
       });
       const cloudApi = this.apiByCloudAddress.get(address);
+      if (!cloudApi) throw new Error("Cloud Api wasn't found");
+      if (!this.debuggerUrl) throw new Error('Debugger URL not initialized');
       cloudApi.cloudNodes = cloudNodes ?? 0;
 
-      let url: URL;
-      try {
-        url = new URL(`/desktop-devtools`, api.transport.host);
-        url.searchParams.set('id', id);
-      } catch (error) {
-        console.error('Invalid ChromeAlive Devtools URL', error, { address });
-      }
+      const url = new URL(`/desktop-devtools`, api.transport.host);
+      url.searchParams.set('id', id);
       // pipe connection
       const [wsToCore, wsToDevtoolsProtocol] = await Promise.all([
         this.connectToWebSocket(url.href, { perMessageDeflate: true }),
@@ -288,7 +334,7 @@ export default class ApiManager<
       });
     } catch (error) {
       this.apiByCloudAddress.get(address)?.resolvable.reject(error, true);
-      throw error;
+      this.apiByCloudAddress.delete(address);
     }
   }
 

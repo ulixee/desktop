@@ -20,7 +20,7 @@ v-html="code"
 <script lang="ts">
 import * as Vue from 'vue';
 import { ref, watch } from 'vue';
-import Prism from 'prismjs';
+import * as Prism from 'prismjs';
 import 'prismjs/plugins/normalize-whitespace/prism-normalize-whitespace.js';
 import 'prismjs/plugins/line-numbers/prism-line-numbers.js';
 import 'prismjs/plugins/line-highlight/prism-line-highlight.js';

@@ -1,16 +1,16 @@
 import { BrowserView } from 'electron';
-import Rectangle = Electron.Rectangle;
-import BrowserWindow = Electron.BrowserWindow;
-import WebContents = Electron.WebContents;
 import generateContextMenu from '../menus/generateContextMenu';
+import BrowserWindow = Electron.BrowserWindow;
+import Rectangle = Electron.Rectangle;
+import WebContents = Electron.WebContents;
 
 export default class View {
-  public isHidden: boolean;
-  public bounds: Rectangle;
-  public browserView: BrowserView;
+  public isHidden: boolean = false;
+  public bounds?: Rectangle;
+  public browserView?: BrowserView;
 
-  public get webContents(): WebContents {
-    return this.browserView.webContents;
+  public get webContents(): WebContents | undefined {
+    return this.browserView?.webContents;
   }
 
   protected isAttached = false;
@@ -27,21 +27,23 @@ export default class View {
   }
 
   public addContextMenu(): void {
-    this.webContents.on('context-menu', (e, params) => {
-      generateContextMenu(params, this.webContents).popup();
+    const { webContents } = this;
+    if (!webContents) return;
+    webContents.on('context-menu', (e, params) => {
+      generateContextMenu(params, webContents).popup();
     });
   }
 
   public attach(): void {
     if (!this.isAttached) {
-      this.window.addBrowserView(this.browserView);
+      if (this.browserView) this.window.addBrowserView(this.browserView);
       this.isAttached = true;
     }
   }
 
   public bringToFront(): void {
     this.attach();
-    this.window.setTopBrowserView(this.browserView);
+    if (this.browserView) this.window.setTopBrowserView(this.browserView);
   }
 
   public detach(): void {
@@ -51,7 +53,7 @@ export default class View {
 
   public destroy(): void {
     this.detach();
-    this.browserView = null;
+    this.browserView = undefined;
   }
 
   public hide(): void {
@@ -60,6 +62,7 @@ export default class View {
   }
 
   public async getContentsHeight(): Promise<number> {
+    if (!this.webContents) return 0;
     return await this.webContents.executeJavaScript(
       `document.querySelector('body > #app').offsetHeight`,
     );
@@ -75,7 +78,7 @@ export default class View {
     ) {
       return;
     }
-    this.browserView.setBounds(newBounds);
+    this.browserView?.setBounds(newBounds);
     this.bounds = newBounds;
     this.isHidden = newBounds.width === 0 && newBounds.height === 0;
   }
@@ -85,9 +88,9 @@ export default class View {
     browserContextId: string;
     url: string;
   }> {
-    await wc.debugger.attach();
+    wc.debugger.attach();
     const { targetInfo } = await wc.debugger.sendCommand('Target.getTargetInfo');
-    await wc.debugger.detach();
+    wc.debugger.detach();
     return targetInfo;
   }
 }
