@@ -176,10 +176,7 @@ export default class AccountManager extends TypedEventEmitter<{
     if (this.mainchainClient) {
       await localchain.attachMainchain(this.mainchainClient);
     }
-    const needsBootstrap = !(await localchain.isCreated());
-    if (needsBootstrap) {
-      await localchain.create(config);
-    }
+    await localchain.createIfMissing(config);
     return localchain;
   }
 

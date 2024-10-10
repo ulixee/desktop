@@ -8,3 +8,5 @@ packages
 ./main
 .idea
 scripts/*.js
+/main/index.js
+/main/index.js.map
