@@ -98,6 +98,7 @@ jobs:
           yarn install
 
       - name: List packages
+        if: ${{ github.event.inputs.importProject }}
         run: ls -la packages && ls -lart node_modules/@ulixee
         shell: bash
 

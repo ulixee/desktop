@@ -32,11 +32,9 @@ import { IncomingMessage } from 'http';
 import { nanoid } from 'nanoid';
 import * as Os from 'os';
 import * as Path from 'path';
-import { types } from 'sass-embedded';
 import WebSocket from 'ws';
 import ApiManager from './ApiManager';
 import ArgonFile from './ArgonFile';
-import Error = types.Error;
 
 const argIconPath = Path.resolve(app.getAppPath(), 'resources', 'arg.png');
 
