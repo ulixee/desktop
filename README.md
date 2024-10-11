@@ -6,6 +6,12 @@ Ulixee Desktop is an Electron-based desktop application that provides a suite of
 - Manage and monitor your Datastores.
 - Manage [Argon](https://argonprotocol.org) payments and profits.
 
+## Download
+
+The latest version of Ulixee Desktop can be downloaded from the [releases page](
+  https://github.com/ulixee/desktop/releases/latest).
+![Ulixee Desktop](./screenshot.png)
+
 ## Features
 
 ### Datastores
