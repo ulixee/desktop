@@ -21,7 +21,7 @@ export const useReplaysStore = defineStore('replaysStore', () => {
   const lastOpenReplay = Vue.ref<IHeroSessionsListResult>(null);
 
   async function onClient(cloud: ICloudConnection, client: Client<'desktop'>): Promise<void> {
-    if (cloud.type !== 'local') return;
+    if (cloud.type !== "local" && !cloud.adminIdentity) return;
     client.removeEventListeners('Sessions.listUpdated');
     client.on('Sessions.listUpdated', x => onSessionList(cloud, client.address, x));
     const list = await client.send('Sessions.list');
