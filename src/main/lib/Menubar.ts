@@ -39,11 +39,14 @@ export class Menubar extends EventEmitter {
     }
 
     // hide the dock icon if it shows
-    if (process.platform === 'darwin') {
-      app.setActivationPolicy('accessory');
-    }
     app.on('second-instance', this.onSecondInstance.bind(this));
     app.on('open-file', this.onFileOpened.bind(this));
+    app.on('window-all-closed', () => {
+      console.log('window-all-closed');
+      if (process.platform !== 'darwin') { // On macOS, apps generally stay open until explicitly quit
+        app.quit();
+      }
+    });
     app.setAppLogsPath();
     (process.env as any).ELECTRON_DISABLE_SECURITY_WARNINGS = true;
     void this.appReady();
@@ -53,6 +56,11 @@ export class Menubar extends EventEmitter {
     if (!this.#tray)
       throw new Error('Please access `this.tray` after the `ready` event has fired.');
     return this.#tray;
+  }
+
+  public async appExit(): Promise<void> {
+    await this.beforeQuit();
+    app.exit();
   }
 
   private bindSignals(): void {
@@ -139,11 +147,6 @@ export class Menubar extends EventEmitter {
       await this.#updateInfoPromise;
       await autoUpdater.quitAndInstall(false, true);
     }
-  }
-
-  private async appExit(): Promise<void> {
-    await this.beforeQuit();
-    app.exit();
   }
 
   private async appReady(): Promise<void> {

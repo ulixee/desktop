@@ -33,7 +33,7 @@ export class WindowManager {
 
     this.bindIpcEvents();
     this.desktopWindow = new DesktopWindow(apiManager);
-    this.events.on(this.desktopWindow, 'close', this.checkOpenWindows.bind(this));
+    this.events.on(this.desktopWindow, 'close', this.close.bind(this));
     this.events.on(this.desktopWindow, 'focus', this.setMenu.bind(this));
     this.events.on(
       apiManager.privateDesktopApiHandler,
@@ -43,13 +43,14 @@ export class WindowManager {
   }
 
   public async openDesktop(): Promise<void> {
-    await app.dock?.show();
     this.setMenu();
-    await this.desktopWindow.open();
+    await this.desktopWindow.open(true);
   }
 
   public close(): void {
+    console.log('Closing Desktop');
     this.events.close();
+    void this.menuBar.appExit();
   }
 
   public async loadChromeAliveWindow(data: {
@@ -61,7 +62,6 @@ export class WindowManager {
       this.#chromeAliveWindowsBySessionId.get(data.heroSessionId)?.window.focus();
       return;
     }
-    await app.dock?.show();
     const chromeAliveWindow = new ChromeAliveWindow(data, data.cloudAddress);
 
     const { heroSessionId } = data;
@@ -167,7 +167,7 @@ export class WindowManager {
 
   private checkOpenWindows(): void {
     if (this.chromeAliveWindows.length === 0 && !this.desktopWindow.isOpen) {
-      app.dock?.hide();
+      app.quit();
     }
   }
 
