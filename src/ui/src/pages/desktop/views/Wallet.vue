@@ -17,14 +17,14 @@
         class="ol-span-1 mb-10 flex cursor-pointer flex-col divide-y divide-gray-200 rounded-lg bg-white shadow-md hover:shadow-sm"
         @click.prevent="$router.push(`/wallet/${account.address}`)"
       >
-        <div class="relative w-full p-6 flex-col flex-grow">
-          <h3 class="w-full grid grid-cols-2 align-middle">
+        <div class="relative w-full flex-grow flex-col p-6">
+          <h3 class="grid w-full grid-cols-2 align-middle">
             <span class="font-bold text-gray-700">{{ titleCase(account.name) }}</span>
 
             <span class="">
               <span
                 v-if="account.mainchainIdentity?.chain != 'mainnet'"
-                class=" rounded p-1 px-1 text-[10px]/[12px] font-medium uppercase text-white float-end"
+                class="float-end rounded p-1 px-1 text-[10px]/[12px] font-medium uppercase text-white"
                 :class="
                   {
                     testnet: 'bg-green-400',
@@ -39,7 +39,10 @@
           <div class="mt-1 w-full overflow-hidden text-ellipsis text-xs font-light text-gray-500">
             {{ account.address }}
           </div>
-          <div class="mt-4 text-base text-gray-400" v-if="wallet.localchainForQuery === account.name">
+          <div
+            class="mt-4 text-base text-gray-400"
+            v-if="wallet.localchainForQuery === account.name"
+          >
             Used to fund queries created in Ulixee Desktop
           </div>
           <div
@@ -55,7 +58,7 @@
               <WalletIcon class="relative mr-1 inline h-4 align-text-bottom text-fuchsia-600" />
               Balance
               <span class="font-semibold">{{
-                toArgons(account.balance + account.mainchainBalance, false)
+                toArgons(account.balance + account.mainchainBalance)
               }}</span>
             </div>
           </div>
@@ -65,9 +68,9 @@
               <ClockIcon class="relative mr-1 inline h-4 align-text-bottom text-fuchsia-600" />
               Pending
               <span class="font-semibold"
-                >{{ toArgons(account.pendingBalanceChange, false) }}
+                >{{ toArgons(account.pendingBalanceChange) }}
                 <slot v-if="account.heldBalance > 0n"
-                  >, Hold {{ toArgons(account.heldBalance, false) }}</slot
+                  >, Hold {{ toArgons(account.heldBalance) }}</slot
                 ></span
               >
             </div>
@@ -117,7 +120,7 @@
                 class="relative mr-1 inline h-4 align-text-bottom text-fuchsia-600"
               />
               Balance
-              <span class="font-semibold">{{ toArgons(account.balance, false) }}</span>
+              <span class="font-semibold">{{ toArgons(account.balance) }}</span>
             </div>
           </div>
         </div>
@@ -163,7 +166,7 @@
                 Credit at {{ getDatastoreName(credit.datastoreId) }}
               </div>
               <div class="basis-1/2 text-lg">
-                {{ toArgons(credit.remaining, true) }}
+                {{ toArgons(credit.remaining) }}
               </div>
             </li>
             <li v-if="!wallet?.credits?.length">

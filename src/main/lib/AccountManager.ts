@@ -234,7 +234,7 @@ export default class AccountManager extends TypedEventEmitter<{
       balance += account.balance;
     }
 
-    const formattedBalance = ArgonUtils.format(balance, 'milligons', 'argons');
+    const formattedBalance = ArgonUtils.format(balance, 'microgons', 'argons');
 
     return {
       credits: [],
@@ -275,7 +275,7 @@ export default class AccountManager extends TypedEventEmitter<{
   }
 
   public async createArgonsToSendFile(request: {
-    milligons: bigint;
+    microgons: bigint;
     fromAddress?: string;
     toAddress?: string;
   }): Promise<IArgonFileMeta> {
@@ -283,7 +283,7 @@ export default class AccountManager extends TypedEventEmitter<{
       (await this.getLocalchain(request.fromAddress)) ?? this.getDefaultLocalchain();
 
     const file = await localchain.transactions.send(
-      request.milligons,
+      request.microgons,
       request.toAddress ? [request.toAddress] : null,
     );
     const argonFile = JSON.parse(file);
@@ -292,17 +292,17 @@ export default class AccountManager extends TypedEventEmitter<{
     return {
       rawJson: file,
       file: ArgonFileSchema.parse(argonFile),
-      name: `${ArgonUtils.format(request.milligons, 'milligons', 'argons')} ${recipient}.${ARGON_FILE_EXTENSION}`,
+      name: `${ArgonUtils.format(request.microgons, 'microgons', 'argons')} ${recipient}.${ARGON_FILE_EXTENSION}`,
     };
   }
 
   public async createArgonsToRequestFile(request: {
-    milligons: bigint;
+    microgons: bigint;
     sendToMyAddress?: string;
   }): Promise<IArgonFileMeta> {
     const localchain =
       (await this.getLocalchain(request.sendToMyAddress)) ?? this.getDefaultLocalchain();
-    const file = await localchain.transactions.request(request.milligons);
+    const file = await localchain.transactions.request(request.microgons);
     const argonFile = JSON.parse(file);
 
     return {
@@ -324,7 +324,7 @@ export default class AccountManager extends TypedEventEmitter<{
       const funding = argonFile.request.reduce((sum, x) => {
         if (x.accountType === 'deposit') {
           for (const note of x.notes) {
-            if (note.noteType.action === 'claim') sum += note.milligons;
+            if (note.noteType.action === 'claim') sum += note.microgons;
           }
         }
         return sum;

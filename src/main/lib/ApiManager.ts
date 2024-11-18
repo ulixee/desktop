@@ -168,8 +168,7 @@ export default class ApiManager<
     if (!this.paymentService) throw new Error("Payment service isn't initialized");
     const localchainWallet = await this.accountManager.getWallet();
     const credits = await this.paymentService.credits();
-    const creditBalance = credits.reduce((sum, x) => sum + x.remaining, 0);
-    const creditMilligons = ArgonUtils.microgonsToMilligons(creditBalance);
+    const creditBalance = credits.reduce((sum, x) => sum + x.remaining, 0n);
 
     const localchainBalance = localchainWallet.accounts.reduce(
       (sum, x) => sum + x.balance + x.mainchainBalance,
@@ -179,8 +178,8 @@ export default class ApiManager<
     const brokerBalance = localchainWallet.brokerAccounts.reduce((sum, x) => sum + x.balance, 0n);
 
     const formattedBalance = ArgonUtils.format(
-      localchainBalance + creditMilligons + brokerBalance,
-      'milligons',
+      localchainBalance + creditBalance + brokerBalance,
+      'microgons',
       'argons',
     );
 
@@ -252,6 +251,10 @@ export default class ApiManager<
     for (const [address, entry] of this.apiByCloudAddress) {
       if (entry.name === name) return address;
     }
+  }
+
+  public async getCloudConnectionIdByAddress(address: string): Promise<string | undefined> {
+    return (await this.apiByCloudAddress.get(address)?.resolvable)?.id;
   }
 
   public async connectToCloud(cloud: ICloudSetup): Promise<void> {

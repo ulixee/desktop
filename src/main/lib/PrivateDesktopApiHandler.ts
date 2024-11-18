@@ -160,7 +160,7 @@ export default class PrivateDesktopApiHandler extends TypedEventEmitter<{
   }
 
   public async createArgonsToSendFile(request: {
-    milligons: bigint;
+    microgons: bigint;
     fromAddress?: string;
     toAddress?: string;
   }): Promise<IArgonFileMeta> {
@@ -168,27 +168,27 @@ export default class PrivateDesktopApiHandler extends TypedEventEmitter<{
   }
 
   public async transferArgonsFromMainchain(request: {
-    milligons: bigint;
+    microgons: bigint;
     address: string;
   }): Promise<void> {
     await this.apiManager.accountManager.transferMainchainToLocal(
       request.address,
-      request.milligons,
+      request.microgons,
     );
   }
 
   public async transferArgonsToMainchain(request: {
-    milligons: bigint;
+    microgons: bigint;
     address: string;
   }): Promise<void> {
     return this.apiManager.accountManager.transferLocalToMainchain(
       request.address,
-      request.milligons,
+      request.microgons,
     );
   }
 
   public async createArgonsToRequestFile(request: {
-    milligons: bigint;
+    microgons: bigint;
     sendToMyAddress?: string;
   }): Promise<IArgonFileMeta> {
     return this.apiManager.accountManager.createArgonsToRequestFile(request);

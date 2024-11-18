@@ -1,9 +1,9 @@
 import ArgonUtils from '@ulixee/platform-utils/lib/ArgonUtils';
 import { isRef, unref } from 'vue';
 
-export function toArgons(amount: number | bigint, isMicrogons = false): string {
+export function toArgons(amount: number | bigint): string {
   if (amount === null || amount === undefined) return `${ArgonUtils.ArgonSymbol}0`;
-  return ArgonUtils.format(amount, isMicrogons ? 'microgons' : 'milligons', 'argons');
+  return ArgonUtils.format(amount, 'microgons', 'argons');
 }
 
 export function titleCase(text: string): string {

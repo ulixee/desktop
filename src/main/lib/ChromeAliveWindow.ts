@@ -5,16 +5,14 @@ import { IChromeAliveSessionApis } from '@ulixee/desktop-interfaces/apis';
 import IChromeAliveSessionEvents from '@ulixee/desktop-interfaces/events/IChromeAliveSessionEvents';
 import ISessionAppModeEvent from '@ulixee/desktop-interfaces/events/ISessionAppModeEvent';
 import HeroCore from '@ulixee/hero-core';
-import { data } from 'autoprefixer';
 import { app, BrowserWindow, MenuItem, screen, shell } from 'electron';
-import { nanoid } from 'nanoid';
 import * as Path from 'path';
 import moment from 'moment';
 import generateContextMenu from '../menus/generateContextMenu';
 import ApiClient from './ApiClient';
 import View from './View';
+import loadUrl from './util/loadUrl';
 import BrowserView = Electron.BrowserView;
-import loadUrl, { getUrl } from './util/loadUrl';
 
 // make electron packaging friendly
 const extensionPath = Path.resolve(__dirname, '../ui').replace('app.asar', 'app.asar.unpacked');
@@ -58,7 +56,8 @@ export default class ChromeAliveWindow {
       heroSessionId: string;
       dbPath: string;
     },
-    cloudAddress: string,
+    public cloudAddress: string,
+    public apiConnectionId: string,
   ) {
     bindFunctions(this);
     this.createApi(cloudAddress);
@@ -271,10 +270,9 @@ export default class ChromeAliveWindow {
           return;
         }
 
-        await devtoolsWc.executeJavaScript(
+        void devtoolsWc.executeJavaScript(
           `(async () => {
-            while (typeof UI === 'undefined') {
-            console.log('waiting')
+            while (typeof UI?.panels?.elements?.parentWidgetInternal === 'undefined') {
               await new Promise(resolve => setTimeout(resolve, 100));
             }
 
@@ -293,6 +291,8 @@ export default class ChromeAliveWindow {
             }
           })()`,
         );
+        // give the devtools a chance to load
+        await new Promise(setImmediate);
         const target = await View.getTargetInfo(devtoolsWc);
         await this.api?.send('Session.devtoolsTargetOpened', target);
       });
@@ -335,6 +335,7 @@ export default class ChromeAliveWindow {
     if (!this.session.dbPath.includes(HeroCore.dataDir)) {
       address.searchParams.set('path', this.session.dbPath);
     }
+    address.searchParams.set('id', this.apiConnectionId);
     this.api = new ApiClient(address.href, this.onChromeAliveEvent);
     // eslint-disable-next-line no-console
     console.log('Window connected to %s', this.api.address);

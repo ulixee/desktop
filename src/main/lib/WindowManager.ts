@@ -62,7 +62,11 @@ export class WindowManager {
       this.#chromeAliveWindowsBySessionId.get(data.heroSessionId)?.window.focus();
       return;
     }
-    const chromeAliveWindow = new ChromeAliveWindow(data, data.cloudAddress);
+    const connectionId = await this.apiManager.getCloudConnectionIdByAddress(data.cloudAddress);
+    if (!connectionId) {
+      throw new Error(`No connection found for cloud address ${data.cloudAddress}`);
+    }
+    const chromeAliveWindow = new ChromeAliveWindow(data, data.cloudAddress, connectionId);
 
     const { heroSessionId } = data;
     this.chromeAliveWindows.push(chromeAliveWindow);
