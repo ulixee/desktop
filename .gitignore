@@ -5,11 +5,6 @@ out
 *.log*
 packages
 ./ui
-./main
+main
 .idea
 scripts/*.js
-/main/index.js
-/main/index.js.map
-/main/preload/chromealive.js
-/main/preload/desktop.js
-/main/preload/menubar.js
