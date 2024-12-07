@@ -27,8 +27,8 @@
     <div class="relative mt-5 border-b border-gray-200 pb-5 sm:pb-0">
       <div class="border-b border-gray-200 pb-5 sm:pb-0">
         <div>
-          <div class="inline-block w-1/5 font-medium text-gray-800">Address:</div
-          ><span class="font-light text-gray-500 inline-block">{{ account.address }}</span>
+          <div class="inline-block w-1/5 font-medium text-gray-800">Address:</div>
+          <span class="inline-block font-light text-gray-500">{{ account.address }}</span>
         </div>
         <div class="mt-2">
           <div class="inline-block w-1/5">
@@ -36,16 +36,16 @@
               class="rounded text-sm font-normal uppercase text-gray-800"
               :class="
                 {
-                  testnet: 'bg-green-500 p-1 px-2 text-white',
-                  'local-testnet': 'bg-amber-400 p-1 px-2 text-white',
-                  development: 'bg-cyan-500 p-1 px-2 text-white',
+                  'Argon Testnet': 'bg-green-500 p-1 px-2 text-white',
+                  'Argon Local Testnet': 'bg-amber-400 p-1 px-2 text-white',
+                  'Argon Development': 'bg-cyan-500 p-1 px-2 text-white',
                 }[String(account.mainchainIdentity?.chain ?? '')]
               "
               >{{ account.mainchainIdentity?.chain }}</span
             >
           </div>
-<!--          <span class="font-light text-gray-500 inline-block">Genesis: {{ account.mainchainIdentity?.genesisHash }}-->
-<!--          </span>-->
+          <!--          <span class="font-light text-gray-500 inline-block">Genesis: {{ account.mainchainIdentity?.genesisHash }}-->
+          <!--          </span>-->
         </div>
 
         <div class="mt-1">

@@ -27,9 +27,9 @@
                 class="float-end rounded p-1 px-1 text-[10px]/[12px] font-medium uppercase text-white"
                 :class="
                   {
-                    testnet: 'bg-green-400',
-                    'local-testnet': 'bg-amber-400',
-                    development: 'bg-cyan-500',
+                    'Argon Testnet': 'bg-green-400',
+                    'Argon Local Testnet': 'bg-amber-400',
+                    'Argon Development': 'bg-cyan-500',
                   }[String(account.mainchainIdentity?.chain ?? '')]
                 "
                 >{{ account.mainchainIdentity?.chain }}</span
