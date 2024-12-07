@@ -38,9 +38,6 @@ module.exports = {
     },
     hardenedRuntime: true,
     gatekeeperAssess: false,
-    extendInfo: {
-      LSUIElement: 1,
-    },
     entitlements: 'build-resources/entitlements.mac.plist',
     entitlementsInherit: 'build-resources/entitlements.mac.plist',
     notarize: false, // do this manually

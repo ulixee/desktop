@@ -5,17 +5,13 @@
         class="divide-y-gray-300 divide-y rounded-md bg-white shadow-inner ring-1 ring-gray-300 ring-opacity-20 ring-opacity-80"
       >
         <div class="px-4 py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-          <dt class="text-sm font-medium text-gray-500">
-            Entrypoint
-          </dt>
+          <dt class="text-sm font-medium text-gray-500">Entrypoint</dt>
           <dd class="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
             {{ datastore.scriptEntrypoint }}
           </dd>
         </div>
         <div class="px-4 py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-          <dt class="text-sm font-medium text-gray-500">
-            Datastore Id
-          </dt>
+          <dt class="text-sm font-medium text-gray-500">Datastore Id</dt>
           <dd
             class="mt-1 overflow-hidden text-ellipsis text-sm text-gray-900 sm:col-span-2 sm:mt-0"
           >
@@ -23,25 +19,19 @@
           </dd>
         </div>
         <div class="px-4 py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-          <dt class="whitespace-nowrap text-sm font-medium text-gray-500">
-            Latest Version
-          </dt>
+          <dt class="whitespace-nowrap text-sm font-medium text-gray-500">Latest Version</dt>
           <dd class="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
             {{ datastore.version }}
           </dd>
         </div>
         <div class="px-4 py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-          <dt class="text-sm font-medium text-gray-500">
-            Created
-          </dt>
+          <dt class="text-sm font-medium text-gray-500">Created</dt>
           <dd class="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
             {{ formatDate(datastore.versionTimestamp) }}
           </dd>
         </div>
         <div class="px-4 py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-          <dt class="text-sm font-medium text-gray-500">
-            Documentation
-          </dt>
+          <dt class="text-sm font-medium text-gray-500">Documentation</dt>
           <dd class="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
             <a
               href="#"
@@ -53,9 +43,7 @@
           </dd>
         </div>
         <div v-if="!adminIdentity" class="px-4 py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-          <dt class="text-sm font-medium text-gray-500">
-            Install
-          </dt>
+          <dt class="text-sm font-medium text-gray-500">Install</dt>
           <dd class="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
             <a
               href="#"
@@ -66,7 +54,7 @@
             <a
               v-if="!installed"
               type="button"
-              class="font-semibold text-fuchsia-800 underline hover:text-fuchsia-800/70 cursor-pointer"
+              class="cursor-pointer font-semibold text-fuchsia-800 underline hover:text-fuchsia-800/70"
               @click.prevent="install"
             >
               <ArrowDownTrayIcon
@@ -139,7 +127,8 @@
             href="#"
             class="font-medium text-fuchsia-900 hover:text-fuchsia-600"
             @click.prevent="attachIdentity"
-          >Admin Identity</a>
+            >Admin Identity</a
+          >
           to create new Credits.
         </p>
       </div>
@@ -161,7 +150,9 @@
           <span class="mr-3 whitespace-nowrap text-right font-light">-Store Credits:</span>
           <div>
             <span class="whitespace-nowrap text-fuchsia-700">{{ userSpending.credits }}</span>
-            <span class="mx-1 font-thin text-gray-600">/ {{ userSpending.creditsAllocated }} allocated</span>
+            <span class="mx-1 font-thin text-gray-600"
+              >/ {{ userSpending.creditsAllocated }} allocated</span
+            >
           </div>
 
           <span class="col-span-2 h-1 border-t border-gray-300">&nbsp;</span>
@@ -249,8 +240,8 @@ export default Vue.defineComponent({
       x => x.datastoreId === datastoreId && x.datastoreVersion === version,
     );
 
-    let remainingCreditMicrogons = 0;
-    let allocatedCreditMicrogons = 0;
+    let remainingCreditMicrogons = 0n;
+    let allocatedCreditMicrogons = 0n;
 
     for (const credit of userCredits) {
       remainingCreditMicrogons += credit.remaining;
@@ -262,10 +253,10 @@ export default Vue.defineComponent({
     const userSpend = creditsSpent;
 
     const userSpending = Vue.ref({
-      total: toArgons(userSpend, true),
-      credits: toArgons(creditsSpent, true),
-      creditsAllocated: toArgons(allocatedCreditMicrogons, true),
-      net: toArgons(userSpend - creditsSpent, true),
+      total: toArgons(userSpend),
+      credits: toArgons(creditsSpent),
+      creditsAllocated: toArgons(allocatedCreditMicrogons),
+      net: toArgons(userSpend - creditsSpent),
     });
 
     return {
@@ -273,12 +264,12 @@ export default Vue.defineComponent({
       credits: Vue.ref({
         allocated: '',
         count: 0,
-        spent: toArgons(creditsSpent, true),
+        spent: toArgons(creditsSpent),
       }),
       revenue: Vue.ref({
-        earned: toArgons(totalSpend, true),
-        credits: toArgons(credits, true),
-        net: toArgons(totalSpend - credits, true),
+        earned: toArgons(totalSpend),
+        credits: toArgons(credits),
+        net: toArgons(totalSpend - credits),
       }),
       userSpending,
       datastore: summary,
@@ -303,7 +294,7 @@ export default Vue.defineComponent({
         id: this.datastoreId,
       });
       this.credits.count = count;
-      this.credits.allocated = toArgons(issuedCredits ?? 0, true);
+      this.credits.allocated = toArgons(issuedCredits ?? 0);
     },
     openDocs() {
       const version = this.datastore.version;

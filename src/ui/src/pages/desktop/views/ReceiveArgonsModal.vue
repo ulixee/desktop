@@ -16,7 +16,7 @@
         <div class="px-4 py-5 sm:px-6">
           <h3 class="text-base font-semibold leading-6 text-gray-900">Argon File</h3>
           <p class="mt-1 max-w-2xl text-sm text-gray-500">
-            You received a {{ toArgons(argonFile.credit.microgons, true) }} credit
+            You received a {{ toArgons(argonFile.credit.microgons) }} credit
             <template v-if="datastore?.name">
               good at a Datastore called "{{ datastore.name }}".
             </template>
@@ -56,7 +56,7 @@
             <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
               <dt class="text-sm font-medium text-gray-500">Credit Value</dt>
               <dd class="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                {{ toArgons(argonFile.credit.microgons, true) }}
+                {{ toArgons(argonFile.credit.microgons) }}
               </dd>
             </div>
           </dl>
@@ -99,7 +99,7 @@
         <div class="px-4 py-5 sm:px-6">
           <h3 class="text-base font-semibold leading-6 text-gray-900">Argon File</h3>
           <p v-if="argonFile.send" class="mt-1 max-w-2xl text-sm text-gray-500">
-            This file has Argons worth {{ toArgons(milligons, false) }}.
+            This file has Argons worth {{ toArgons(microgons) }}.
             <span v-if="isValidArgonRequest">Click below to save it to your wallet.</span>
             <span v-else
               >It was not sent to an address in your wallet. Please add this Localchain before
@@ -107,7 +107,7 @@
             >
           </p>
           <p v-else class="mt-1 max-w-2xl text-sm text-gray-500">
-            This is a request to send {{ toArgons(milligons, false) }}.
+            This is a request to send {{ toArgons(microgons) }}.
             <span v-if="isValidArgonRequest"
               >Click below to accept the charges to your wallet.</span
             >
@@ -129,7 +129,7 @@
                 {{ displayNote(note) }}
               </dt>
               <dd class="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                {{ toArgons(note.milligons) }}
+                {{ toArgons(note.microgons) }}
               </dd>
             </div>
           </dl>
@@ -140,7 +140,7 @@
             v-if="argonFile.request && wallet.accounts.length > 1"
             v-model="sendFromName"
             as="div"
-            class="space-between mx-auto mb-3 flex flex-row justify-center text-center w-2/3"
+            class="space-between mx-auto mb-3 flex w-2/3 flex-row justify-center text-center"
           >
             <ListboxLabel class="mr-2 py-2 text-sm font-medium text-gray-900">
               Fulfill this request from:
@@ -293,7 +293,7 @@ export default Vue.defineComponent({
       datastore,
       wallet,
       sendFromName: Vue.ref<string>(null),
-      milligons: Vue.ref<number>(),
+      microgons: Vue.ref<bigint>(),
       isAccepted: Vue.computed(() => {
         if (props.argonFile?.credit) {
           const url = props.argonFile.credit.datastoreUrl;
@@ -309,16 +309,16 @@ export default Vue.defineComponent({
         if (value.credit) {
           const datastoresStore = useDatastoreStore();
           this.datastore = await datastoresStore.getByUrl(value.credit.datastoreUrl);
-          this.milligons = 0;
+          this.microgons = 0n;
         } else if (value.send) {
-          this.milligons = 0;
+          this.microgons = 0n;
           const walletStore = useWalletStore();
           const wallet = walletStore.wallet;
           this.isValidArgonRequest = true;
           for (const change of value.send) {
             for (const note of change.notes) {
               if (note.noteType.action === 'send') {
-                this.milligons += Number(note.milligons);
+                this.microgons += note.microgons;
                 if (note.noteType.to) {
                   const toAddresses = note.noteType.to;
                   this.isValidArgonRequest = toAddresses.some(x =>
@@ -329,7 +329,7 @@ export default Vue.defineComponent({
             }
           }
         } else if (value.request) {
-          this.milligons = 0;
+          this.microgons = 0n;
           this.isValidArgonRequest = true;
           for (const change of value.send) {
             if (change.accountType === 'tax') {
@@ -337,7 +337,7 @@ export default Vue.defineComponent({
             }
             for (const note of change.notes) {
               if (note.noteType.action === 'claim') {
-                this.milligons += Number(note.milligons);
+                this.microgons += note.microgons;
               }
             }
           }

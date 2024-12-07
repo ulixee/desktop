@@ -30,7 +30,7 @@ export default class DesktopWindow extends TypedEventEmitter<{
 
   constructor(private apiManager: ApiManager) {
     super();
-    void this.open(false);
+    void this.open(true);
   }
 
   public focus(): void {

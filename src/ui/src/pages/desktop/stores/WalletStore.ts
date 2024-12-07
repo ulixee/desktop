@@ -47,13 +47,13 @@ export const useWalletStore = defineStore('walletStore', () => {
     return account;
   }
 
-  async function transferFromMainchain(milligons: bigint, address: string) {
-    await window.desktopApi.send('Argon.transferFromMainchain', { milligons, address });
+  async function transferFromMainchain(microgons: bigint, address: string) {
+    await window.desktopApi.send('Argon.transferFromMainchain', { microgons, address });
     await load();
   }
 
-  async function transferToMainchain(milligons: bigint, address: string) {
-    await window.desktopApi.send('Argon.transferToMainchain', { milligons, address });
+  async function transferToMainchain(microgons: bigint, address: string) {
+    await window.desktopApi.send('Argon.transferToMainchain', { microgons, address });
     await load();
   }
 
@@ -75,9 +75,9 @@ export const useWalletStore = defineStore('walletStore', () => {
     await load();
   }
 
-  async function createSendArgonsFile(milligons: bigint, toAddress?: string, fromAddress?: string) {
+  async function createSendArgonsFile(microgons: bigint, toAddress?: string, fromAddress?: string) {
     const argons = await window.desktopApi.send('Argon.send', {
-      milligons,
+      microgons,
       toAddress,
       fromAddress,
     });
@@ -85,9 +85,9 @@ export const useWalletStore = defineStore('walletStore', () => {
     return argons;
   }
 
-  async function createRequestArgonsFile(milligons: bigint, sendToMyAddress?: string) {
+  async function createRequestArgonsFile(microgons: bigint, sendToMyAddress?: string) {
     const argons = await window.desktopApi.send('Argon.request', {
-      milligons,
+      microgons,
       sendToMyAddress,
     });
     await load();

@@ -39,7 +39,7 @@ export default class ApiClient<
   }
 
   public async connect(): Promise<void> {
-    await this.connection.connect(false, 15e3);
+    await this.connection.connect({ timeoutMs: 15e3, isAutoConnect: false });
     this.isConnected = true;
   }
 
